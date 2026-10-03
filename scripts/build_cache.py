@@ -20,6 +20,7 @@ Flags:
 """
 import argparse
 import logging
+import subprocess
 import sys
 from pathlib import Path
 
@@ -29,11 +30,39 @@ from src.ingestion.pipeline import build_all_caches  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
+ROOT = Path(__file__).resolve().parents[1]
+TREASURY_CACHE = ROOT / "data" / "cache" / "market" / "treasury_par_yield_curve.csv"
+
+
+def _is_provisional(path: Path) -> bool:
+    if not path.exists():
+        return False
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            if not line.startswith("#"):
+                break
+            if line.lstrip("#").strip() == "provisional: true":
+                return True
+    return False
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--skip-event-study", action="store_true")
     parser.add_argument("--skip-market-data", action="store_true")
+    parser.add_argument("--skip-provisional-check", action="store_true")
     args = parser.parse_args()
+
+    if not args.skip_market_data and not args.skip_provisional_check and _is_provisional(TREASURY_CACHE):
+        print("Existing cached market data is PROVISIONAL (fetched via WebFetch, not a direct download).")
+        print("Running scripts/verify_provisional_data.py first to check it against a direct fetch...\n")
+        check = subprocess.run([sys.executable, str(ROOT / "scripts" / "verify_provisional_data.py")])
+        print()
+        if check.returncode != 0:
+            print("Provisional data check reported a mismatch (see above) -- continuing to overwrite with "
+                  "freshly, directly-fetched data now.\n")
+        else:
+            print("Provisional data confirmed accurate -- overwriting with a fresh, non-provisional fetch now.\n")
 
     stats = build_all_caches(
         include_event_study_gdelt=not args.skip_event_study,

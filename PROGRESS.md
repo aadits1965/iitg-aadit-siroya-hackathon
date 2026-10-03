@@ -220,3 +220,51 @@ via WebFetch, full historical rebuild still pending Aadit's local run) and real 
 placeholders presented as real.
 
 Not yet done: dashboard visualization of this output (Phase 5), and Module A stretch (only if time remains).
+
+## Changes requested before Phase 5 (post-Phase-4 review)
+Status: **DONE**
+
+1. **Provenance.** The WebFetch-sourced Treasury curve and equity prices are marked `PROVISIONAL` in both
+   file headers and `YieldCurve.is_provisional` (parsed from a `# provisional: true` line) -- surfaced as a
+   loud warning by `scripts/run_stress_test.py` and a top-level `data_provisional` flag in
+   `results/stress_test_output.json`. `scripts/verify_provisional_data.py` cross-checks them against a
+   direct download (to run from a normal network) and `scripts/build_cache.py` runs it automatically first
+   if it finds provisional data cached. **The Fed stress-scenario numbers are no longer provisional**:
+   re-sourced by directly `curl`-ing federalreserve.gov (reachable directly, unlike treasury.gov/Yahoo) and
+   parsing the actual embedded HTML `<table>` of quarterly scenario values with regex -- no summarising
+   model in the loop at all. This independently re-derived the exact same peak VIX (72.0, Q2 2026) and peak
+   BBB-10yr spread (5.7pp, Q3 2026) the Board's own prose states, and added a real sourced VIX baseline
+   (23.4) replacing an earlier illustrative guess. Full citation and table excerpt in
+   `docs/DATA_VERIFICATION.md` sections 9-10.
+2. **Accounting.** Loans now value at **carrying value = notional - EL** (amortized-cost/provisioning
+   treatment) and are never also fair-valued off the curve/spread -- eliminates the double-count by
+   construction, not by a special-cased check. `RevaluationResult` reports `mtm_pnl` (bonds/swaps/options/
+   FX only), `credit_loss` (loans' delta-EL only), and `total_stressed_loss` = both, as three explicit
+   numbers. EL is stated as a 1-year, Basel/regulatory-style measure (not lifetime IFRS9/CECL), justified in
+   `docs/ASSUMPTIONS.md`. 5 new tests confirm the split (`tests/test_revaluation.py::TestAccountingSplit`).
+3. **Scenario coherence.** Replaced the single generic "moderate" tier (which had been reused, incoherently,
+   for an idiosyncratic single-name credit event) with two distinct, narratively-coherent tiers:
+   `idiosyncratic_credit_event` (entity-specific, no broad rate move, large spread/PD impact on just the
+   named name) and `idiosyncratic_minor` (M&A/product launch/other, small entity-specific moves). The Fed's
+   recessionary scenario (`fed_severely_adverse`, rates DOWN) and the brief's own inflationary example
+   (`geopolitical_rate_shock`, rates UP) stay explicit and separate, each with a one-line economic
+   narrative. 8 new tests (`tests/test_shocks.py`) verify every tier against the real config file, including
+   that the two rate-direction scenarios actually point opposite ways.
+4. **Shown, not just claimed** (see chat reply): all 8 real triggered signals with headline text/impact
+   components/fired scenario; confirmed the earlier -6.05%/$645.9M example was a manually-constructed
+   illustrative scenario, not a real trigger -- `run_stress_test.py` now reports the actual highest-impact
+   real signal as the labelled "headline" and keeps the illustrative example clearly separate; full
+   naive-vs-full-reprice tables; P&L by asset class for the real headline scenario.
+5. **Entity-linking precision**: 50-headline hand-audit found ~30% precision before fixing, dominated by
+   "Target" colliding with "price target" (confirming the review's hypothesis) and a ticker/verb collision
+   ("ups"/UPS). Fixed (`src/nlp/entity_linking.py`): ambiguous bare aliases excluded (Target/Visa/Apple/
+   Oracle), ticker symbols matched only via `$CASHTAG` not free text, a heuristic suppressing bank names
+   used as the *source* of a rating action rather than the subject, and an unrelated regex-boundary bug
+   (`\b` failing after punctuation) caught by the new regression tests along the way. Re-scored same sample:
+   **91.7% precision** (44/48), 12 regression tests added, all documented including the remaining known gap.
+   This fix changed real pipeline output -- `results/signals.jsonl` regenerated (86 signals, down from 89)
+   and `results/stress_test_output.json` regenerated (6 fired, down from 8; headline scenario is now a
+   cleanly-attributed Disney credit-event downgrade, not a false-positive-driven result).
+
+100/100 tests passing. Gate status: **PASS** -- every point addressed with real code changes, real
+re-measured evidence, and real regenerated output, not just documentation claims.

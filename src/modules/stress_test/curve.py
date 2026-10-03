@@ -9,6 +9,15 @@ missing -- there is no silent fallback. The only synthetic curve in this module
 is `synthetic_test_only_curve()`, which is never called by `load_curve()` and
 must never be wired into any production path (dashboard, deck, metrics.json) --
 tests use it explicitly and by name so that is always visible in a diff/review.
+
+**Provisional data:** the currently-cached curve was fetched via Claude's
+WebFetch tool, which passes page content through a summarising model rather
+than returning raw bytes -- so despite being real, live-fetched data (not
+fabricated), it is marked `is_provisional=True` (a `# provisional: true` line
+in the cache file) until `scripts/verify_provisional_data.py` confirms it
+against a directly-downloaded copy. Callers that produce deck/README-facing
+output should check `curve.is_provisional` and refuse/warn accordingly -- see
+scripts/run_stress_test.py for the pattern.
 """
 from __future__ import annotations
 
@@ -28,6 +37,12 @@ class YieldCurve:
     rates_by_maturity_years: dict[float, float]  # par yield, decimal (0.04 = 4%)
     is_synthetic_test_only: bool
     source: str
+    is_provisional: bool = False
+    """True when this snapshot was fetched via a tool that passes content through
+    a summarising model (Claude's WebFetch) rather than a direct byte-for-byte
+    download -- see docs/DATA_VERIFICATION.md section 9. Provisional data must
+    never be used in the deck/README/final numbers until
+    scripts/verify_provisional_data.py confirms it against a direct fetch."""
 
     def zero_rate(self, maturity_years: float) -> float:
         """Linear interpolation on the par curve, used as a zero-rate proxy.
@@ -51,7 +66,8 @@ class YieldCurve:
             shift = parallel_bp / 10000.0 + (steepener_bp_per_10y / 10000.0) * (m / 10.0)
             new_rates[m] = r + shift
         return YieldCurve(as_of=self.as_of, rates_by_maturity_years=new_rates,
-                           is_synthetic_test_only=self.is_synthetic_test_only, source=self.source + " +shock")
+                           is_synthetic_test_only=self.is_synthetic_test_only, source=self.source + " +shock",
+                           is_provisional=self.is_provisional)
 
 
 class MissingCurveCacheError(RuntimeError):
@@ -71,6 +87,7 @@ def load_curve(cache_path: Path = CACHE_PATH) -> YieldCurve:
         )
 
     as_of = None
+    is_provisional = False
     source_lines = []
     rates: dict[float, float] = {}
     with cache_path.open("r", encoding="utf-8") as f:
@@ -82,6 +99,8 @@ def load_curve(cache_path: Path = CACHE_PATH) -> YieldCurve:
             stripped = line.lstrip("#").strip()
             if stripped.startswith("as_of:"):
                 as_of = datetime.strptime(stripped.split(":", 1)[1].strip(), "%Y-%m-%d").date()
+            elif stripped.startswith("provisional:"):
+                is_provisional = stripped.split(":", 1)[1].strip().lower() == "true"
             else:
                 source_lines.append(stripped)
             header_idx = i + 1
@@ -99,6 +118,7 @@ def load_curve(cache_path: Path = CACHE_PATH) -> YieldCurve:
         as_of=as_of,
         rates_by_maturity_years=rates,
         is_synthetic_test_only=False,
+        is_provisional=is_provisional,
         source=" | ".join(source_lines) or f"cached from {cache_path.name}",
     )
 

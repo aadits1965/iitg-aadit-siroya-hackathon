@@ -1,92 +1,114 @@
 # Shock library: event_class x severity tier -> shocks applied to the portfolio.
 #
-# SOURCED figures (not assumptions) come from the Federal Reserve's "2025 November
-# Proposed 2026 Stress Test Scenarios" (severely adverse scenario), fetched live
-# 2026-10-04: https://www.federalreserve.gov/publications/2025-november-proposed-2026-stress-test-scenarios.htm
-#   - Equity prices fall ~54% (Q4 2025 - Q3 2026)
-#   - 10-year Treasury yield falls ~2.0 percentage points (4.3% -> 2.3%)
-#   - BBB-10Y Treasury spread widens 4.4 percentage points (to 5.7pp)
-#   - VIX peaks at 72 (quarterly high daily close)
-#   - Unemployment rises 5.5pp to a 10% peak
-#   - House prices fall ~29%, commercial real estate falls ~40%
-# This is the Fed's ONE published severely-adverse scenario -- it is used directly
-# for the "severe" tier below. The Fed does not publish a graduated series of
-# scenarios, so the "moderate" tier is this project's own illustrative
-# assumption (a documented fraction of the severe tier, not independently
-# sourced) -- labelled as such. The brief's own example (equities -10%, rates
-# +200bp) is kept as a separate, explicitly-labelled illustrative geopolitical
-# scenario, since it moves rates in the OPPOSITE direction to the Fed's
-# recessionary scenario (a geopolitical/inflationary shock vs. a
-# recessionary/flight-to-quality shock are genuinely different shapes -- stated
-# here rather than silently blended).
+# SOURCED figures come from the Federal Reserve's "2025 November Proposed 2026 Stress Test
+# Scenarios" severely-adverse domestic table, extracted 2026-10-04 by directly downloading
+# https://www.federalreserve.gov/publications/2025-november-proposed-2026-stress-test-scenarios.htm
+# (HTTP 200, reachable directly from this dev machine -- unlike treasury.gov/Yahoo Finance) and
+# parsing the embedded HTML <table> with the actual quarter-by-quarter scenario values -- NOT
+# relayed through a summarising model. Full table and parse log: docs/DATA_VERIFICATION.md
+# section 10. Key quarters used:
+#   Q1 2026 (jump-off quarter): 10-yr Treasury 3.2%, BBB yield 7.6%, VIX 58.8
+#   Q2 2026: VIX peaks at 72.0 (matches the Board's own prose statement exactly)
+#   Q3 2026: BBB yield 8.1%, 10-yr Treasury 2.4% -> BBB-10yr spread = 5.7pp, the peak
+#            (matches the Board's own prose "reaching a level of 5.7 percentage points" exactly)
+#   Q4 2026: 10-yr Treasury troughs at 2.3% (vs. a 4.3% Q4-2025 jump-off per the Board's prose
+#            -- not itself in this table, which starts Q1 2026 -- i.e. a 200bp decline)
+#   Baseline (non-stress) VIX, from the adjacent baseline-scenario table: 23.4 (Q1 2026)
+# Equity: "Equity prices fall about 54 percent" and house prices -29% / CRE -40% are the Board's
+# own stated prescribed declines (prose, cross-checked against the table's Dow Jones/HPI/CRE
+# index columns for directional consistency -- see docs/DATA_VERIFICATION.md section 10).
+#
+# This is the Fed's ONE published severely-adverse scenario -- it is used directly for the
+# "fed_severely_adverse" tier below. Every other tier in this file is this project's own
+# illustrative assumption, explicitly labelled as such, not a second official scenario.
 
 severity_tiers:
-  severe:
-    description: "Federal Reserve severely-adverse scenario magnitudes (SOURCED, see header citation)"
+  fed_severely_adverse:
+    narrative: "Broad-based U.S. recession (the Fed's own 2026 severely-adverse design): GDP
+      contracts and unemployment rises to 10%, triggering a flight-to-quality that pushes long
+      Treasury yields DOWN even as credit spreads and equity volatility spike and equities sell
+      off sharply."
+    source: "SOURCED -- Federal Reserve severely-adverse scenario, see header citation above."
     equity_pct_move: -0.54
-    rate_parallel_bp: -200          # Treasury yields FALL in a recessionary flight-to-quality scenario
+    rate_parallel_bp: -200          # 10-yr: 4.3% (Q4'25 jump-off, Board prose) -> 2.3% (Q4'26 trough, table)
     credit_spread_widening_bp:
-      investment_grade: 440          # BBB-10Y spread widening, applied as the IG proxy
-      high_yield: 650                # ASSUMPTION: typically wider than IG in stress; not separately published
-                                      # in this Fed document (it discusses BBB only, not HY) -- illustrative.
-    vix_peak: 72
-    vix_baseline_assumption: 18      # ASSUMPTION: typical pre-stress VIX level, not from the Fed document
-    pd_multiplier: 3.0               # ASSUMPTION: illustrative -- not a Fed-published PD multiplier
+      investment_grade: 440          # BBB-10yr spread: widens 4.4pp to a 5.7pp peak (table-confirmed, Q3'26)
+      high_yield: 650                # ASSUMPTION: the Fed table covers BBB only, not a separate HY series --
+                                      # illustrative multiple of the sourced IG figure, not independently sourced.
+    vix_peak: 72.0                   # SOURCED -- table-confirmed, Q2 2026, matches Board's own prose exactly
+    vix_baseline: 23.4               # SOURCED -- from the adjacent BASELINE scenario table, Q1 2026
+    pd_multiplier: 3.0               # ASSUMPTION: illustrative, not a Fed-published PD multiplier
 
-  moderate:
-    description: "ASSUMPTION: illustrative fraction (40%) of the severe tier magnitudes above -- the Fed does
-      not publish an intermediate scenario, so this is this project's own interpolation, not independently
-      sourced."
-    equity_pct_move: -0.22
-    rate_parallel_bp: -80
-    credit_spread_widening_bp:
-      investment_grade: 175
-      high_yield: 260
-    vix_peak: 35
-    vix_baseline_assumption: 18
-    pd_multiplier: 1.6
-
-  geopolitical_example:
-    description: "ASSUMPTION: the hackathon brief's own stated example scenario (equities -10%, rates
-      +200bp) -- an inflationary/rate-shock shape, the opposite direction to the Fed's recessionary
-      severely-adverse scenario. Kept separate and explicitly labelled rather than blended with the Fed
-      numbers above, since the two scenarios have different underlying macro stories."
+  geopolitical_rate_shock:
+    narrative: "Inflationary geopolitical shock (e.g. an energy-supply disruption or trade
+      conflict): central banks are forced to tighten into weakening growth, so long rates RISE
+      even as risk assets sell off -- the opposite rate direction to a demand-driven recession,
+      kept deliberately separate from the Fed scenario above rather than blended with it."
+    source: "ASSUMPTION -- the hackathon brief's own stated example scenario, not independently sourced."
     equity_pct_move: -0.10
     rate_parallel_bp: 200
     credit_spread_widening_bp:
       investment_grade: 100
       high_yield: 150
-    vix_peak: 30
-    vix_baseline_assumption: 18
+    vix_peak: 30.0
+    vix_baseline: 23.4               # SOURCED (same baseline figure as above)
     pd_multiplier: 1.3
+
+  idiosyncratic_credit_event:
+    narrative: "Company- or sector-specific credit deterioration (e.g. a ratings downgrade,
+      covenant breach, or adverse credit news about one issuer): that name's/sector's credit
+      spread blows out and its PD rises sharply, with NO broad market or rate move -- this is
+      idiosyncratic, not systemic, which is why it is scoped entity_specific rather than
+      portfolio_wide."
+    source: "ASSUMPTION -- illustrative, not independently sourced."
+    equity_pct_move: -0.15           # applies only to the affected sector/ticker (entity_specific scope)
+    rate_parallel_bp: 0              # a single-name event does not move the risk-free curve
+    credit_spread_widening_bp:
+      investment_grade: 300
+      high_yield: 450
+    vix_peak: 28.0                   # modest, local vol bump -- not a market-wide VIX spike
+    vix_baseline: 23.4
+    pd_multiplier: 5.0               # the whole point of a credit event is THIS name's default risk rising sharply
+
+  idiosyncratic_minor:
+    narrative: "Lower-severity, firm-specific news (M&A announcement, product launch, routine
+      company news): small, scoped-to-entity price moves, no systemic or rate effect."
+    source: "ASSUMPTION -- illustrative, not independently sourced."
+    equity_pct_move: -0.06
+    rate_parallel_bp: 0
+    credit_spread_widening_bp:
+      investment_grade: 40
+      high_yield: 60
+    vix_peak: 24.0
+    vix_baseline: 23.4
+    pd_multiplier: 1.2
 
 # Real-estate-sector-specific overlay (SOURCED, same Fed document): applied as an
 # additional equity/collateral shock ONLY to positions tagged sector="Real Estate".
 real_estate_overlay:
-  house_price_pct_move: -0.29   # SOURCED (Fed severely-adverse scenario)
-  cre_price_pct_move: -0.40     # SOURCED (Fed severely-adverse scenario)
+  house_price_pct_move: -0.29   # SOURCED (Fed severely-adverse scenario, prose)
+  cre_price_pct_move: -0.40     # SOURCED (Fed severely-adverse scenario, prose)
 
-# event_class -> which severity tier applies by default, and whether the shock
-# is portfolio-wide (macro/geopolitical) or scoped to exposed counterparties/
-# sectors only (credit event, specific to the entity named in the signal).
+# event_class -> which severity tier applies, and whether the shock is portfolio-wide
+# (macro/geopolitical) or scoped to exposed counterparties/sectors only (idiosyncratic events).
 event_class_mapping:
   Geopolitical:
-    tier: geopolitical_example
+    tier: geopolitical_rate_shock
     scope: portfolio_wide
   Macroeconomic:
-    tier: severe
+    tier: fed_severely_adverse
     scope: portfolio_wide
   Credit Event:
-    tier: moderate
-    scope: entity_specific   # only the named counterparty/sector/country is shocked
+    tier: idiosyncratic_credit_event
+    scope: entity_specific
   Merger/Acquisition:
-    tier: moderate
+    tier: idiosyncratic_minor
     scope: entity_specific
   Product Launch:
-    tier: moderate
+    tier: idiosyncratic_minor
     scope: entity_specific
   Other:
-    tier: moderate
+    tier: idiosyncratic_minor
     scope: entity_specific
 
 # Trigger thresholds (Phase 4.3): impact score above which a stress test fires.

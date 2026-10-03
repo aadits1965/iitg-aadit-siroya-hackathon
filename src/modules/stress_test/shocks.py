@@ -30,6 +30,7 @@ class ShockSet:
     affected_tickers: set
     affected_sectors: set
     affected_countries: set
+    narrative: str = ""
 
     @property
     def vol_multiplier(self) -> float:
@@ -70,12 +71,13 @@ def build_shock_set(
     return ShockSet(
         event_class=event_class,
         tier_name=mapping["tier"],
+        narrative=tier["narrative"],
         scope=mapping["scope"],
         rate_parallel_bp=tier["rate_parallel_bp"],
         equity_pct_move=tier["equity_pct_move"],
         credit_spread_widening_bp=tier["credit_spread_widening_bp"],
         vix_peak=tier["vix_peak"],
-        vix_baseline=tier["vix_baseline_assumption"],
+        vix_baseline=tier["vix_baseline"],
         pd_multiplier=tier["pd_multiplier"],
         affected_tickers=set(tickers or []),
         affected_sectors=set(sectors or []),

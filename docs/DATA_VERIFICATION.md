@@ -167,6 +167,96 @@ or JUDGMENT (a call made based on the facts).
   `config/scenarios.yaml`; every other tier/number in that file not drawn from this citation is explicitly
   labelled an illustrative assumption, not a second sourced figure.
 
+## 10. Addendum (2026-10-04, post-Phase-4 review) — Fed scenario re-sourced from the raw table, not a summary
+
+- FACT: `federalreserve.gov` is reachable with a **direct** `curl`/`requests` call from this dev machine
+  (HTTP 200) — unlike `treasury.gov` (HTTP 000) and Yahoo Finance (429/JSON errors). This means the earlier
+  Fed-scenario figures, originally obtained via Claude's WebFetch tool (which passes content through a
+  summarising model), have now been **re-extracted directly**: `curl` the real HTML page, then parse its
+  embedded `<table>` elements with a plain regex/HTML strip — no summarising model in the loop at all.
+- FACT: the page embeds the Federal Reserve's actual quarter-by-quarter severely-adverse domestic scenario
+  table (`Date, Real GDP growth, Nominal GDP growth, Real/Nominal disposable income growth, Unemployment
+  rate, CPI inflation, 3-month Treasury rate, 5-year Treasury yield, 10-year Treasury yield, BBB corporate
+  yield, Mortgage rate, Prime rate, Dow Jones Total Stock Market Index, House Price Index, Commercial Real
+  Estate Price Index, Market Volatility Index`), quarterly from Q1 2026 through Q1 2029. Full extracted
+  table saved to the session scratchpad; key rows:
+
+  | Quarter | 10-yr Treasury | BBB yield | BBB−10yr spread | VIX |
+  |---|---|---|---|---|
+  | Q1 2026 (jump-off) | 3.2% | 7.6% | 4.4pp | 58.8 |
+  | Q2 2026 | 2.7% | 8.2% | 5.5pp | **72.0** (peak) |
+  | Q3 2026 | 2.4% | 8.1% | **5.7pp** (peak) | 70.8 |
+  | Q4 2026 | **2.3%** (trough) | 7.8% | 5.5pp | 66.5 |
+
+  This **independently re-derives** (via the table's own raw numbers, computing BBB-yield minus 10-yr-yield
+  myself) the exact figures the Board's prose states separately ("VIX... peak of 72 percent in the second
+  quarter", "spread... reaching a level of 5.7 percentage points", 10-yr "to 2.3 percent... by the fourth
+  quarter of 2026") — the prose and the raw table agree exactly, which is strong corroboration the earlier
+  WebFetch-summarised figures were accurate, but this raw-table extraction is now the citation used in
+  `config/scenarios.yaml`, not the earlier summary.
+- FACT: the **baseline** (non-stress) scenario's own table gives a real, sourced pre-stress VIX figure —
+  23.4 at Q1 2026 — used as `vix_baseline` in the "fed_severely_adverse" and "geopolitical_rate_shock"
+  tiers, replacing the earlier illustrative guess of 18.
+- Downloaded the official PDF (`2026-proposed-supervisory-stress-test-scenarios-20251024.pdf`, 1.86MB,
+  confirmed real PDF via `file`) as a further corroborating source, not yet cross-parsed page-by-page given
+  the HTML table already gives the authoritative raw figures directly.
+- **This Fed-scenario data is SOURCED, not PROVISIONAL** (direct download, no summarising model). The
+  Treasury par-yield curve and the five equity spot prices in `data/cache/market/` remain **PROVISIONAL**
+  (WebFetch-sourced, summarising model in the loop) — those are marked with `provisional: true` in their
+  file headers and `YieldCurve.is_provisional` is checked and surfaced by `scripts/run_stress_test.py`.
+  `scripts/verify_provisional_data.py` cross-checks them against a direct download once run from a normal
+  network; nothing from them should be treated as deck-ready until that check passes.
+
+## 11. Addendum (2026-10-04, post-Phase-4 review) — entity-linking precision audit
+
+Requested check: sample 50 real, wide-universe-linked headlines and measure precision.
+`scripts/audit_entity_linking.py` draws the sample (seed 42); Claude read every row's text and judged
+TP/FP by hand; the labelled sample is committed at `data/eval/entity_linking_audit.csv`.
+
+**Before any fix:** an earlier, informal pass over a larger (171-doc) linked pool found precision around
+**30%** (18 correct / 61 total ticker matches), dominated by two bugs:
+1. The bare word "Target" (an alias for Target Corp) matched the ubiquitous financial-news phrase
+   "price target" / "stock price target" — by far the largest single source of false positives, and
+   exactly the pattern the review flagged as a risk (also checked: Visa, Apple, Oracle).
+2. Bare ticker symbols were matched as free text case-insensitively, so the verb "ups" ("Barclays ups to
+   Overweight") matched United Parcel Service (ticker UPS).
+A third, smaller pattern: a sell-side bank's own name appearing only as the **source** of a rating action
+on a *different* company ("Autodesk downgraded ... at JPMorgan") was being attributed as an affected
+entity — this is the exact bug already caught independently while reviewing the engine's real signal
+output (the Autodesk/JPMorgan signal, since fixed and visible in the diff between the pre- and post-fix
+`results/signals.jsonl`).
+
+**Fixes** (`src/nlp/entity_linking.py`):
+1. `AMBIGUOUS_BARE_ALIASES = {"target", "visa", "apple", "oracle"}` — these four names are excluded from
+   free-text alias matching; only the fuller legal name ("Target Corp.") or a `$CASHTAG` still matches.
+2. Ticker symbols are matched **only** via an explicit `$CASHTAG` regex (case-sensitive), never as a
+   free-text alias — fixes the "ups"/UPS collision at the root rather than as a one-off.
+3. `_is_analyst_source_mention()`: a lightweight heuristic (checks ~10 chars before / ~22 chars after the
+   match for subject markers like "stock"/"shares" vs. source indicators like "upgrades"/"at "/"reels in")
+   suppresses a bank's own ticker when it looks like the source of a rating action on someone else, for
+   `{JPM, BAC, MS, WFC, GS, C}`. Documented as imperfect — it still misses a bank name at the very end of a
+   headline with no adjacent verb (e.g. "... — BofA"), which is a known remaining gap, not silently claimed
+   to be solved.
+4. **A fourth, unrelated bug the regression tests caught in the process**: the original `\bALIAS\b` regex
+   silently fails to anchor after an alias ending in punctuation (`\b` only fires at a word/non-word
+   transition, and "Corp."/" " are both non-word, so there's no transition) — this affected most of the
+   universe's full legal names ("Target Corp.", "Apple Inc.", "JPMorgan Chase & Co.", etc.). Fixed by
+   switching to `(?<!\w)...(?!\w)` lookarounds.
+
+**After the fixes**, re-scoring the same committed 50-row sample: **44 / 48 ticker matches correct = 91.7%
+precision** (`data/eval/entity_linking_audit.csv`, `verdict_tp_or_fp` column). The 4 remaining false
+positives are all the same documented gap: a bank name at the very end of a headline/tweet with no
+adjacent rating-action verb for the heuristic to key off (e.g. `"$NVDA - Nvidia set for gaming tailwinds -
+BofA"` — BAC still gets attributed). 12 regression tests added
+(`tests/test_entity_linking_precision.py`) pinning the specific headline patterns above so they can't
+silently regress; full suite 100/100 passing.
+
+**Downstream effect:** these are the same linking functions the core 20-ticker engine uses, not just the
+wide event-study universe — the Autodesk/JPMorgan false positive was already visible in the real signal
+output before this fix. `results/signals.jsonl` and `results/stress_test_output.json` were regenerated
+after the fix (86 signals, down from 89; 6 fired stress tests, down from 8 — the removed signals/triggers
+were exactly the ones built on a now-corrected false-positive entity link).
+
 ## Net effect on scope (superseded fields updated by §8 addendum above)
 
 - News: GDELT (primary, live+replay, headline-level only — no article body) + NewsAPI (optional, live-only,

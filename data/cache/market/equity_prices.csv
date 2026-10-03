@@ -1,10 +1,16 @@
-# source: Yahoo Finance chart API (query1.finance.yahoo.com), fetched live via Claude's WebFetch tool
+# PROVISIONAL -- DO NOT USE IN THE DECK/README/FINAL NUMBERS UNTIL VERIFIED.
+# provisional: true
+# source: Yahoo Finance chart API (query1.finance.yahoo.com), fetched live via Claude's WebFetch tool, which
+# passes page content through a SUMMARISING MODEL rather than returning raw bytes -- so although this is
+# real, live-fetched data (not fabricated), these specific numbers were transcribed by that model and have
+# not been independently verified against the raw response bytes.
 # fetched_by: Claude (not scripts/build_cache.py) on 2026-10-04 because this dev sandbox's direct yfinance
 # calls fail (JSON decode errors / 429s) while WebFetch reached Yahoo successfully -- see
 # docs/DATA_VERIFICATION.md section 9. This is a SINGLE-DATE snapshot (2026-10-02 close/last price), enough
 # for Module B's option-underlying spot prices. It is NOT a time series and cannot support the Phase 3
 # event study, which needs a full historical window -- that requires scripts/build_cache.py run from a
 # normal network (see docs/USER_TODO.md).
+# REQUIRED before use in any deck/README/final number: run `python scripts/verify_provisional_data.py`.
 date,ticker,close
 2026-10-02,SPY,769.64
 2026-10-02,AAPL,333.69

@@ -114,6 +114,81 @@ class TestOptionUnderSelloff:
         assert result.after[0].value > result.before[0].value  # put gains value as spot falls + vol rises
 
 
+class TestAccountingSplit:
+    """Phase 4 review fix: loans must contribute to stress P&L through exactly
+    one channel (credit loss = delta-EL), never also through a mark-to-market
+    price change -- see revaluation.py module docstring."""
+
+    def test_loan_value_equals_notional_minus_el(self):
+        positions = [p for p in _sample_portfolio() if p.asset_class == "loan"]
+        from src.modules.stress_test.revaluation import value_position
+        v = value_position(positions[0], CURVE, EQUITY_SPOT)
+        assert v.value == pytest.approx(positions[0].notional - v.expected_loss)
+
+    def test_loan_mtm_contribution_is_zero_even_under_rate_and_spread_shock(self):
+        """A pure rate+spread shock (pd_multiplier=1, so EL unchanged) must
+        leave a loan's value completely unchanged -- loans aren't repriced off
+        the curve/spread at all, only through PD."""
+        positions = [p for p in _sample_portfolio() if p.asset_class == "loan"]
+        shock = ShockSet(
+            event_class="Macroeconomic", tier_name="severe", scope="portfolio_wide",
+            rate_parallel_bp=-200, equity_pct_move=-0.54,
+            credit_spread_widening_bp={"investment_grade": 440, "high_yield": 650},
+            vix_peak=72, vix_baseline=18, pd_multiplier=1.0,  # <- no PD stress
+            affected_tickers=set(), affected_sectors=set(), affected_countries=set(),
+        )
+        result = revalue_portfolio(positions, CURVE, EQUITY_SPOT, shock)
+        assert result.total_pnl == pytest.approx(0.0, abs=1e-6)
+
+    def test_mtm_pnl_excludes_loans_credit_loss_includes_only_loans(self):
+        positions = _sample_portfolio()
+        shock = ShockSet(
+            event_class="Macroeconomic", tier_name="severe", scope="portfolio_wide",
+            rate_parallel_bp=-200, equity_pct_move=-0.54,
+            credit_spread_widening_bp={"investment_grade": 440, "high_yield": 650},
+            vix_peak=72, vix_baseline=18, pd_multiplier=3.0,
+            affected_tickers=set(), affected_sectors=set(), affected_countries=set(),
+        )
+        result = revalue_portfolio(positions, CURVE, EQUITY_SPOT, shock)
+
+        # mtm_pnl computed independently from non-loan positions only
+        non_loan_pnl = sum(a.value - b.value for b, a in zip(result.before, result.after)
+                            if b.position.asset_class != "loan")
+        assert result.mtm_pnl == pytest.approx(non_loan_pnl, rel=1e-9)
+
+        # credit_loss computed independently from loan EL deltas only
+        loan_el_delta = sum(a.expected_loss - b.expected_loss for b, a in zip(result.before, result.after)
+                             if b.position.asset_class == "loan")
+        assert result.credit_loss == pytest.approx(loan_el_delta, rel=1e-9)
+
+    def test_total_stressed_loss_equals_mtm_pnl_minus_credit_loss(self):
+        positions = _sample_portfolio()
+        shock = ShockSet(
+            event_class="Macroeconomic", tier_name="severe", scope="portfolio_wide",
+            rate_parallel_bp=-200, equity_pct_move=-0.54,
+            credit_spread_widening_bp={"investment_grade": 440, "high_yield": 650},
+            vix_peak=72, vix_baseline=18, pd_multiplier=3.0,
+            affected_tickers=set(), affected_sectors=set(), affected_countries=set(),
+        )
+        result = revalue_portfolio(positions, CURVE, EQUITY_SPOT, shock)
+        assert result.total_stressed_loss == pytest.approx(result.mtm_pnl - result.credit_loss, rel=1e-9)
+        # and this must equal the combined total_pnl (both are the same number,
+        # just reported on a consistent "positive = gain" sign convention)
+        assert result.total_stressed_loss == pytest.approx(result.total_pnl, rel=1e-9)
+
+    def test_credit_loss_is_positive_when_pd_rises(self):
+        positions = [p for p in _sample_portfolio() if p.asset_class == "loan"]
+        shock = ShockSet(
+            event_class="Credit Event", tier_name="idiosyncratic", scope="portfolio_wide",
+            rate_parallel_bp=0, equity_pct_move=0,
+            credit_spread_widening_bp={"investment_grade": 0, "high_yield": 0},
+            vix_peak=18, vix_baseline=18, pd_multiplier=4.0,
+            affected_tickers=set(), affected_sectors=set(), affected_countries=set(),
+        )
+        result = revalue_portfolio(positions, CURVE, EQUITY_SPOT, shock)
+        assert result.credit_loss > 0  # EL rose -> this is a real loss, positive by convention
+
+
 class TestBreakdowns:
     def test_pnl_by_asset_class_sums_to_total(self):
         positions = _sample_portfolio()

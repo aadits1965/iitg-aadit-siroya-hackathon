@@ -1,10 +1,20 @@
+# PROVISIONAL -- DO NOT USE IN THE DECK/README/FINAL NUMBERS UNTIL VERIFIED.
 # as_of: 2026-10-02
-# US Treasury daily par yield curve (home.treasury.gov), fetched live via Claude's WebFetch tool.
+# provisional: true
+# US Treasury daily par yield curve (home.treasury.gov), fetched live via Claude's WebFetch tool, which
+# passes page content through a SUMMARISING MODEL rather than returning raw bytes -- so although this is
+# real, live-fetched data (not fabricated, not from training knowledge), the specific numbers below were
+# transcribed by that model and have not been independently verified against the raw response bytes.
 # fetched_by: Claude (not scripts/build_cache.py) on 2026-10-04 because this dev sandbox's direct network
 # calls to treasury.gov fail outright (HTTP 000) while WebFetch reached it successfully -- see
-# docs/DATA_VERIFICATION.md section 9. Re-running scripts/build_cache.py from a normal network will
-# overwrite this file with a freshly directly-fetched snapshot; that's expected and fine.
-# raw source row: 10/02/2026,4.04,4.09,4.11,4.19,4.26,4.27,4.46,4.83,4.96,5.06,5.17,5.28,5.67,5.63
+# docs/DATA_VERIFICATION.md section 9.
+# raw source row (as relayed by the summarising model, not independently confirmed byte-for-byte):
+#   10/02/2026,4.04,4.09,4.11,4.19,4.26,4.27,4.46,4.83,4.96,5.06,5.17,5.28,5.67,5.63
+# REQUIRED before use in any deck/README/final number: run
+# `python scripts/verify_provisional_data.py` from a normal network (treasury.gov reachable directly there).
+# That script directly downloads the real CSV and diffs it against this file. If it matches, re-run
+# `python scripts/build_cache.py` to replace this file with a non-provisional, directly-fetched one and
+# everything downstream (results/stress_test_output.json etc.) becomes safe to use.
 maturity_years,par_yield
 0.0833333333,0.0404
 0.125,0.0409

@@ -38,6 +38,31 @@ assembled for linking purposes, **not** claimed to be a current, authoritative i
 is never used for any index-membership claim. Module B and the main dashboard/engine continue to use the
 curated 20-ticker `data/universe.csv`.
 
+## Module B: EL horizon and the MTM / credit-loss split
+
+- **EL horizon: 1-year, not lifetime.** `RATING_TO_PD` in `src/modules/stress_test/portfolio.py` is an
+  illustrative **1-year** PD curve, applied directly regardless of a loan's remaining maturity (1-7 years in
+  this portfolio). This is the Basel/regulatory-capital convention (point-in-time, 1-year EL), not an
+  IFRS9/CECL-style lifetime expected credit loss (which would require multiplying by remaining maturity or
+  a cumulative default curve, and would typically only apply once a loan has migrated to a worse "stage").
+  Justification: this project is a stress-test/risk-signal prototype in the Basel/capital-stress tradition
+  (closer in spirit to the Fed's own CCAR/DFAST framework, which this project's shock magnitudes are drawn
+  from), not a financial-statement loss-provisioning exercise, so the simpler, standard 1-year EL is used
+  uniformly. Stated as a simplification, not claimed to match any specific bank's actual IFRS9/CECL model.
+- **MTM vs credit-loss split (no double counting):** a loan's stress impact flows through exactly ONE
+  channel -- `src/modules/stress_test/revaluation.py` values a loan at **carrying value = notional - EL**
+  (amortized-cost / provisioning treatment, the standard banking-book accounting for held loans) and does
+  **not** separately reprice it off the yield curve or a credit spread. Bonds, swaps, options and FX
+  forwards are the opposite: fully fair-valued (full cashflow discounting / closed-form pricing) and a
+  credit-spread shock shows up there as a price decline -- this is the standard trading/AFS-book treatment,
+  and those instruments do **not** also get a separate EL-based credit-loss line, since the spread-driven
+  price move already reflects the market's updated credit view. Reported as two explicit numbers:
+  `mtm_pnl` (bonds+swaps+options+FX only) and `credit_loss` (loans' delta-EL only), summing to
+  `total_stressed_loss` -- never merged into a single unlabelled figure. Verified by
+  `tests/test_revaluation.py::TestAccountingSplit` (5 tests), including a direct check that a loan's value
+  is completely unchanged under a rate+spread shock with no PD multiplier (i.e. the curve/spread genuinely
+  has zero effect on loan valuation, by construction, not just by coincidence in one test case).
+
 ## Module B: shock library and credit assumptions
 
 - **Sourced:** the "severe" shock tier in `config/scenarios.yaml` uses the Federal Reserve's published
