@@ -10,8 +10,20 @@
       to satisfy both readings. Confirm which is authoritative if possible.
 - [ ] **Confirm the judging rubric weights** beyond the stated tie-breakers (Domain Understanding, then
       Presentation & Communication, then earliest timestamp) — not provided in the brief.
-- [ ] **Label the event-classification gold set** (`data/eval/event_gold.csv`, ~150-300 items) once Phase 1-2
-      generate the cached doc pool — this is a human-judgement task, not something to fabricate.
+- [ ] **Label the event-classification gold set.** `data/eval/event_gold.csv` currently has **110 real rows**
+      (sampled from the 373 real cached Mastodon + replay-tweet docs, stratified by the rule baseline's own
+      guess) — run `python scripts/label_events.py` to fill in `gold_label` by hand; it saves after every row
+      so you can stop and resume. This is a human-judgement task, not something to fabricate.
+      **After you run `scripts/build_cache.py` from a clean network** (GDELT item above), re-run
+      `python scripts/sample_event_gold.py` first to regenerate the sample with GDELT headlines included —
+      the current 110-row sample has zero "Product Launch" examples and is Mastodon/Twitter-only, so the
+      full run will give better class coverage before you spend time labelling.
+- [ ] **Run `python scripts/run_impact_event_study.py`** after the GDELT cache-build step above — this
+      produces the real Impact Score validation result (Spearman correlation vs realised abnormal returns).
+      Only 4 real ticker-linked, real-timestamped documents exist in this dev environment so far (not enough
+      to report a correlation; see docs/EVALUATION.md section 3) — this script needs the larger GDELT sample
+      to produce a meaningful number. If the result comes back weak/null, that's a real finding to report
+      honestly in the deck, not a reason to re-run until something better appears.
 - [ ] **Record the demo video** per `docs/DEMO_SCRIPT.md` (Phase 10), upload to YouTube as **Unlisted**, and
       test the link in an incognito window before submitting.
 - [ ] **Make the GitHub repo public** before submission and open it logged-out to confirm it's visible.

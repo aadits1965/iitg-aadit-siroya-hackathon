@@ -1,0 +1,28 @@
+{
+  "sentiment_eval": {
+    "dataset": "zeroshot/twitter-financial-news-sentiment:validation",
+    "n_fetched": 2000,
+    "vader": {
+      "model": "vader",
+      "n_examples": 2000,
+      "accuracy": 0.505,
+      "accuracy_ci95": [0.4825, 0.5255],
+      "macro_f1": 0.4529,
+      "macro_f1_ci95": [0.4292, 0.476],
+      "latency_s_total": 0.21,
+      "latency_ms_per_doc": 0.11,
+      "throughput_docs_per_s": 9514.1
+    },
+    "finbert": {
+      "model": "finbert",
+      "n_examples": 2000,
+      "accuracy": 0.722,
+      "accuracy_ci95": [0.702, 0.742],
+      "macro_f1": 0.6599,
+      "macro_f1_ci95": [0.6353, 0.6838],
+      "latency_s_total": 270.13,
+      "latency_ms_per_doc": 135.07,
+      "throughput_docs_per_s": 7.4
+    }
+  }
+}
