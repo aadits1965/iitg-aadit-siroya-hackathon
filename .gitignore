@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Env / secrets
+.env
+*.key
+
+# Model caches / downloads
+.cache/
+models/
+*.bin
+*.safetensors
+~/.cache/huggingface
+
+# Data hygiene (keep data/ small; never commit large dumps)
+*.parquet
+data/cache/*.jsonl.gz
+*.db-journal
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Build artifacts
+*.pyc
+build/
+dist/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Logs
+*.log
