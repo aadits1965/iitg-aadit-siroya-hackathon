@@ -1,0 +1,22 @@
+# as_of: 2026-10-02
+# US Treasury daily par yield curve (home.treasury.gov), fetched live via Claude's WebFetch tool.
+# fetched_by: Claude (not scripts/build_cache.py) on 2026-10-04 because this dev sandbox's direct network
+# calls to treasury.gov fail outright (HTTP 000) while WebFetch reached it successfully -- see
+# docs/DATA_VERIFICATION.md section 9. Re-running scripts/build_cache.py from a normal network will
+# overwrite this file with a freshly directly-fetched snapshot; that's expected and fine.
+# raw source row: 10/02/2026,4.04,4.09,4.11,4.19,4.26,4.27,4.46,4.83,4.96,5.06,5.17,5.28,5.67,5.63
+maturity_years,par_yield
+0.0833333333,0.0404
+0.125,0.0409
+0.1666666667,0.0411
+0.25,0.0419
+0.3333333333,0.0426
+0.5,0.0427
+1.0,0.0446
+2.0,0.0483
+3.0,0.0496
+5.0,0.0506
+7.0,0.0517
+10.0,0.0528
+20.0,0.0567
+30.0,0.0563

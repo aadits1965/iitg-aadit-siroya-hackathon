@@ -1,29 +1,67 @@
 # Things Only Aadit Can Do
 
-- [ ] **Run `python scripts/build_cache.py` once from a normal (non-shared, non-datacenter) network** — e.g.
-      your laptop on home/college wifi — to populate `data/cache/news_gdelt.jsonl` with real GDELT headlines.
-      The dev sandbox's shared IP is persistently rate-limited/blocked by GDELT and several news RSS feeds
-      (confirmed HTTP 429/403 on every retry); this is an IP-reputation issue with the sandbox, not with
-      GDELT itself. See `docs/DATA_VERIFICATION.md` §8 for the full evidence trail.
+## 1. One-time local data build (do this first, from a normal network — home/college wifi, not the dev
+sandbox this was built in; GDELT, Treasury, and Yahoo Finance are all confirmed unreachable from there —
+see `docs/DATA_VERIFICATION.md` sections 8-9)
+
+```bash
+# from the repo root
+python -m venv .venv
+.venv\Scripts\activate          # Windows; use `source .venv/bin/activate` on macOS/Linux
+pip install -r requirements.txt
+
+# Optional but recommended: put a free FRED API key in .env (copy .env.example -> .env first)
+# so credit-spread series get fetched too. Skip if you don't want to sign up -- Module B still
+# runs on documented illustrative spread assumptions without it.
+
+python scripts/build_cache.py
+```
+
+**Expected runtime: ~15-20 minutes**, dominated by GDELT's own 5-second self-throttle across ~100 queries
+(16 core-universe + ~80 widened event-study-universe) and ~80 individual yfinance price downloads. If you
+want a faster partial run first: `python scripts/build_cache.py --skip-event-study` (skips the ~80-query
+widened pull, ~5 min instead) or `--skip-market-data`.
+
+**Output files it writes:**
+- `data/cache/news_gdelt.jsonl` — core 20-ticker news (used by the dashboard / Module B signal feed)
+- `data/cache/news_gdelt_event_study.jsonl` — wide 80-ticker news (used only to get the event study's
+  sample size up — see `docs/EVALUATION.md` section 3)
+- `data/cache/social_mastodon.jsonl` — refreshed live social posts
+- `data/cache/market/treasury_par_yield_curve.csv` — replaces the one Claude fetched manually via WebFetch
+  on 2026-10-04 (see that file's header comment) with a freshly, directly-fetched snapshot — expected and fine
+- `data/cache/market/equity_prices.csv` — ~550 days of daily closes for all universe + event-study tickers
+- `data/cache/market/fred_series.csv` — only if `FRED_API_KEY` is set in `.env`
+
+## 2. Then run the impact-score event study
+
+```bash
+python scripts/run_impact_event_study.py
+```
+
+Produces the real Impact Score validation result (Spearman correlation vs realised abnormal returns,
+with its 95% CI and a mean-|AR|-by-decile table — see `docs/EVALUATION.md` section 3 for why this needs
+n>=200 to be meaningful). Runtime: a few minutes (FinBERT over however many docs got linked to a ticker).
+**If the result comes back weak, null, or still underpowered, that's a real finding — report it honestly
+in the deck as-is, don't re-run hoping for a better number.**
+
+## 3. Then regenerate and label the event-classification gold set
+
+```bash
+python scripts/sample_event_gold.py      # re-run now that GDELT data exists -- much better class coverage
+python scripts/label_events.py           # interactive, saves after every row, safe to stop and resume
+```
+
+Don't label the current committed `data/eval/event_gold.csv` (200 rows, but Mastodon/Twitter-only, zero
+"Product Launch" examples) — regenerate it first so your labelling time goes toward a sample that actually
+covers all six event classes.
+
+## 4. Everything else
+
 - [ ] **Confirm with organisers:** the guidelines doc says demo video = "10 mins screen recording" but the
       platform's Required Deliverables says live demo "not to exceed 5 minutes". This build targets **<=5:00**
       to satisfy both readings. Confirm which is authoritative if possible.
 - [ ] **Confirm the judging rubric weights** beyond the stated tie-breakers (Domain Understanding, then
       Presentation & Communication, then earliest timestamp) — not provided in the brief.
-- [ ] **Label the event-classification gold set.** `data/eval/event_gold.csv` currently has **110 real rows**
-      (sampled from the 373 real cached Mastodon + replay-tweet docs, stratified by the rule baseline's own
-      guess) — run `python scripts/label_events.py` to fill in `gold_label` by hand; it saves after every row
-      so you can stop and resume. This is a human-judgement task, not something to fabricate.
-      **After you run `scripts/build_cache.py` from a clean network** (GDELT item above), re-run
-      `python scripts/sample_event_gold.py` first to regenerate the sample with GDELT headlines included —
-      the current 110-row sample has zero "Product Launch" examples and is Mastodon/Twitter-only, so the
-      full run will give better class coverage before you spend time labelling.
-- [ ] **Run `python scripts/run_impact_event_study.py`** after the GDELT cache-build step above — this
-      produces the real Impact Score validation result (Spearman correlation vs realised abnormal returns).
-      Only 4 real ticker-linked, real-timestamped documents exist in this dev environment so far (not enough
-      to report a correlation; see docs/EVALUATION.md section 3) — this script needs the larger GDELT sample
-      to produce a meaningful number. If the result comes back weak/null, that's a real finding to report
-      honestly in the deck, not a reason to re-run until something better appears.
 - [ ] **Record the demo video** per `docs/DEMO_SCRIPT.md` (Phase 10), upload to YouTube as **Unlisted**, and
       test the link in an incognito window before submitting.
 - [ ] **Make the GitHub repo public** before submission and open it logged-out to confirm it's visible.

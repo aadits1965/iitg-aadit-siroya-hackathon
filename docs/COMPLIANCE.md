@@ -11,9 +11,12 @@ Ticked only when verified with evidence (file path / command output). Updated at
       `results/signals.jsonl`, 89 real signals, each with sentiment/event/impact blocks + component breakdown.
 - [x] Signals available downstream via API and/or file. Evidence: `results/signals.jsonl` +
       `GET /signals` (FastAPI), both tested against real data.
-- [ ] At least one downstream module built (Module B — Strategic Portfolio Stress Testing).
-- [ ] Module B: subscribes to Event Class + Impact Score; synthetic portfolio with loans+bonds+derivatives;
-      high-impact event triggers stress test; dashboard shows value before vs after.
+- [x] At least one downstream module built (Module B — Strategic Portfolio Stress Testing). Evidence:
+      `scripts/run_stress_test.py` ran end-to-end against real signals, real portfolio, real market data.
+- [x] Module B: subscribes to Event Class + Impact Score (`trigger.py`, 8/89 real signals fired); synthetic
+      portfolio with loans+bonds+derivatives (50 positions, 5 asset classes); high-impact event triggers
+      stress test (impact>7 threshold, cooldown). Evidence: `results/stress_test_output.json`.
+      Dashboard visualization of before-vs-after is Phase 5, not yet built.
 
 ## Submission package
 - [ ] Public GitHub repo named `iitg-aadit-siroya-hackathon`.

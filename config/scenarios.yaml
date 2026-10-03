@@ -1,0 +1,96 @@
+# Shock library: event_class x severity tier -> shocks applied to the portfolio.
+#
+# SOURCED figures (not assumptions) come from the Federal Reserve's "2025 November
+# Proposed 2026 Stress Test Scenarios" (severely adverse scenario), fetched live
+# 2026-10-04: https://www.federalreserve.gov/publications/2025-november-proposed-2026-stress-test-scenarios.htm
+#   - Equity prices fall ~54% (Q4 2025 - Q3 2026)
+#   - 10-year Treasury yield falls ~2.0 percentage points (4.3% -> 2.3%)
+#   - BBB-10Y Treasury spread widens 4.4 percentage points (to 5.7pp)
+#   - VIX peaks at 72 (quarterly high daily close)
+#   - Unemployment rises 5.5pp to a 10% peak
+#   - House prices fall ~29%, commercial real estate falls ~40%
+# This is the Fed's ONE published severely-adverse scenario -- it is used directly
+# for the "severe" tier below. The Fed does not publish a graduated series of
+# scenarios, so the "moderate" tier is this project's own illustrative
+# assumption (a documented fraction of the severe tier, not independently
+# sourced) -- labelled as such. The brief's own example (equities -10%, rates
+# +200bp) is kept as a separate, explicitly-labelled illustrative geopolitical
+# scenario, since it moves rates in the OPPOSITE direction to the Fed's
+# recessionary scenario (a geopolitical/inflationary shock vs. a
+# recessionary/flight-to-quality shock are genuinely different shapes -- stated
+# here rather than silently blended).
+
+severity_tiers:
+  severe:
+    description: "Federal Reserve severely-adverse scenario magnitudes (SOURCED, see header citation)"
+    equity_pct_move: -0.54
+    rate_parallel_bp: -200          # Treasury yields FALL in a recessionary flight-to-quality scenario
+    credit_spread_widening_bp:
+      investment_grade: 440          # BBB-10Y spread widening, applied as the IG proxy
+      high_yield: 650                # ASSUMPTION: typically wider than IG in stress; not separately published
+                                      # in this Fed document (it discusses BBB only, not HY) -- illustrative.
+    vix_peak: 72
+    vix_baseline_assumption: 18      # ASSUMPTION: typical pre-stress VIX level, not from the Fed document
+    pd_multiplier: 3.0               # ASSUMPTION: illustrative -- not a Fed-published PD multiplier
+
+  moderate:
+    description: "ASSUMPTION: illustrative fraction (40%) of the severe tier magnitudes above -- the Fed does
+      not publish an intermediate scenario, so this is this project's own interpolation, not independently
+      sourced."
+    equity_pct_move: -0.22
+    rate_parallel_bp: -80
+    credit_spread_widening_bp:
+      investment_grade: 175
+      high_yield: 260
+    vix_peak: 35
+    vix_baseline_assumption: 18
+    pd_multiplier: 1.6
+
+  geopolitical_example:
+    description: "ASSUMPTION: the hackathon brief's own stated example scenario (equities -10%, rates
+      +200bp) -- an inflationary/rate-shock shape, the opposite direction to the Fed's recessionary
+      severely-adverse scenario. Kept separate and explicitly labelled rather than blended with the Fed
+      numbers above, since the two scenarios have different underlying macro stories."
+    equity_pct_move: -0.10
+    rate_parallel_bp: 200
+    credit_spread_widening_bp:
+      investment_grade: 100
+      high_yield: 150
+    vix_peak: 30
+    vix_baseline_assumption: 18
+    pd_multiplier: 1.3
+
+# Real-estate-sector-specific overlay (SOURCED, same Fed document): applied as an
+# additional equity/collateral shock ONLY to positions tagged sector="Real Estate".
+real_estate_overlay:
+  house_price_pct_move: -0.29   # SOURCED (Fed severely-adverse scenario)
+  cre_price_pct_move: -0.40     # SOURCED (Fed severely-adverse scenario)
+
+# event_class -> which severity tier applies by default, and whether the shock
+# is portfolio-wide (macro/geopolitical) or scoped to exposed counterparties/
+# sectors only (credit event, specific to the entity named in the signal).
+event_class_mapping:
+  Geopolitical:
+    tier: geopolitical_example
+    scope: portfolio_wide
+  Macroeconomic:
+    tier: severe
+    scope: portfolio_wide
+  Credit Event:
+    tier: moderate
+    scope: entity_specific   # only the named counterparty/sector/country is shocked
+  Merger/Acquisition:
+    tier: moderate
+    scope: entity_specific
+  Product Launch:
+    tier: moderate
+    scope: entity_specific
+  Other:
+    tier: moderate
+    scope: entity_specific
+
+# Trigger thresholds (Phase 4.3): impact score above which a stress test fires.
+# ASSUMPTION, matching the brief's own example ("Impact Score > 7").
+trigger:
+  default_impact_threshold: 7.0
+  cooldown_hours: 6   # mirrors the signal engine's own novelty cooldown (src/nlp/engine.py)

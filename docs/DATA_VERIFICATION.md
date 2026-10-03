@@ -143,6 +143,30 @@ or JUDGMENT (a call made based on the facts).
      data today, so at least one channel's `data/cache/` content is genuinely live-fetched rather than only a
      fixture.
 
+## 9. Addendum (2026-10-04) — real market-data snapshot via WebFetch; Fed stress-scenario sourcing
+
+- FACT: this dev sandbox's **direct** requests calls to treasury.gov (HTTP 000, connection failure) and
+  yfinance/Yahoo Finance (JSON-decode failures, consistent with a 429-style block) fail, exactly like GDELT.
+  However, **Claude's WebFetch tool reached both successfully** — a different network path than this
+  sandbox's direct outbound requests. Used to pull one real, dated snapshot: the US Treasury par yield curve
+  as of 2026-10-02 (`data/cache/market/treasury_par_yield_curve.csv`) and spot prices for SPY/AAPL/MSFT/
+  NVDA/JPM as of the same date (`data/cache/market/equity_prices.csv`), both files stamped with exactly how
+  and when they were fetched. This is real, live-verified data, not training-knowledge or fabrication — but
+  it is a single-date snapshot, not a time series, and cannot substitute for the full historical window
+  `scripts/build_cache.py` needs to build for the event study (GDELT itself still returns 429 even via
+  WebFetch, confirmed by testing it directly — this path doesn't unblock the news side).
+- FACT: the Treasury CSV's exact column format was confirmed live via WebFetch:
+  `Date,"1 Mo","1.5 Month","2 Mo","3 Mo","4 Mo","6 Mo","1 Yr","2 Yr","3 Yr","5 Yr","7 Yr","10 Yr","20 Yr","30 Yr"`,
+  `MM/DD/YYYY` date format. `src/ingestion/market_data.py`'s parser is built against this confirmed format
+  and unit-tested against it verbatim (`tests/test_market_data.py`, 2/2 passing) rather than guessed.
+- FACT: Federal Reserve severely-adverse stress-test scenario magnitudes, fetched live from
+  `federalreserve.gov/publications/2025-november-proposed-2026-stress-test-scenarios.htm` (2026-10-04):
+  equity prices fall ~54%, 10-year Treasury yield falls ~2.0pp (4.3%→2.3%), BBB-10Y spread widens 4.4pp
+  (to 5.7pp), VIX peaks at 72, unemployment rises 5.5pp to a 10% peak, house prices fall ~29%, commercial
+  real estate falls ~40%. Used directly (with citation) for Module B's "severe" shock tier in
+  `config/scenarios.yaml`; every other tier/number in that file not drawn from this citation is explicitly
+  labelled an illustrative assumption, not a second sourced figure.
+
 ## Net effect on scope (superseded fields updated by §8 addendum above)
 
 - News: GDELT (primary, live+replay, headline-level only — no article body) + NewsAPI (optional, live-only,

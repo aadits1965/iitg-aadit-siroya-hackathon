@@ -143,11 +143,80 @@ normal network; one needs human labelling that only Aadit can do. Per the build 
 fails, stop and tell me"), stopping here to report rather than fabricating the missing two numbers or
 quietly working around the blocker.
 
-### Early start on Phase 4 (while waiting on background jobs)
-Not yet reported as a phase completion, but already built and tested while Phase 3's background jobs ran:
-`src/modules/stress_test/curve.py` (yield curve + shock application; uses a clearly-labelled illustrative
-fallback curve since the Treasury endpoint is also blocked here) and `pricing.py` (bond full-cashflow
-pricing, swap DV01, Black-Scholes options, expected loss), with 14 hand-checkable unit tests passing
-(zero-coupon bond vs closed form, DV01 sign for payer/receiver swaps, put-vs-spot monotonicity, EL
-monotonicity in PD). Portfolio generator (`portfolio.py`) also drafted, not yet tested. This will continue
-once Phase 3 is reviewed.
+## Changes requested before continuing (post-Phase-3 review)
+Status: **DONE**
+
+1. **Event-study power threshold raised 30 -> 200**, derived (not arbitrary): ~80% power to detect r≈0.2 at
+   alpha=0.05 needs n≈194 (Fisher z-transform sample-size formula). `run_event_study()` now always computes
+   and returns the Spearman r, CI, and decile table once n>=3 (never suppressed), flagging
+   `power_adequate=False` below 200 with an explicit "UNDERPOWERED" note rather than omitting the number.
+   Widened event-study-only ticker universe added (`data/universe_event_study.csv`, 80 tickers, kept
+   separate from the 20-ticker Module B/dashboard universe) plus a corresponding wider GDELT pull
+   (`ingest_gdelt_event_study()`, 18-month window) to try to reach n>=200 once run from a clean network.
+2. **Sentiment eval extended**: majority-class baseline, full per-class precision/recall/F1, and the eval
+   split's label distribution now all go to `results/metrics.json`; macro-F1 is the documented headline
+   metric, not accuracy. Re-run for real: majority baseline gets 66.9% accuracy but macro-F1 only 0.267
+   (zero recall on negative/positive) -- the exact distortion macro-F1-as-headline is meant to catch.
+   FinBERT's bearish (negative) recall is 0.765 vs VADER's 0.529 and the majority baseline's 0.000.
+3. **`scripts/build_cache.py` extended** to also fetch a dated Treasury par-yield curve snapshot, equity
+   daily prices (core + event-study universe, ~550 days), and optional FRED credit-spread series
+   (`src/ingestion/market_data.py`, Treasury CSV parser unit-tested against the real confirmed column
+   format). `curve.py` rewritten with a **hard gate**: `load_curve()` now raises `MissingCurveCacheError`
+   if no real cached snapshot exists -- no silent fallback. The only synthetic curve
+   (`synthetic_test_only_curve()`) is explicitly named, flagged `is_synthetic_test_only=True`, and used only
+   by unit tests. **To unblock real Module B output now** (direct requests to Treasury/Yahoo fail from this
+   sandbox, but Claude's WebFetch tool reached both through a different path), seeded one real, dated,
+   clearly-provenanced snapshot: Treasury par curve as of 2026-10-02, and spot prices for
+   SPY/AAPL/MSFT/NVDA/JPM same date -- see docs/DATA_VERIFICATION.md section 9 for the full citation trail,
+   and the header comments in `data/cache/market/*.csv` for exactly how/when each was fetched.
+4. **Gold set not sent for labelling.** `scripts/sample_event_gold.py` now targets 200 rows with a 20-per-
+   class floor where available (redistributing shortfall from thin classes to classes with surplus).
+   `docs/USER_TODO.md` now says explicitly: rebuild the cache first, re-run the sampler, *then* label.
+5. **Exact commands for Aadit** written up front in `docs/USER_TODO.md` (venv setup, `build_cache.py` with
+   expected ~15-20 min runtime, then the event study, then gold-set regeneration+labelling), not buried at
+   the end.
+
+Real Fed severely-adverse stress-scenario magnitudes (equity -54%, rates -200bp, IG spread +440bp, VIX
+peak 72, house prices -29%, CRE -40%) fetched live from federalreserve.gov and used directly in
+`config/scenarios.yaml`'s "severe" shock tier, cited; every other tier/number in that file is explicitly
+labelled an illustrative, undsourced assumption rather than presented as a second official figure.
+
+## Phase 4 — Module B: Strategic Portfolio Stress Testing
+Status: **DONE** (core build + tests); dashboard integration is Phase 5.
+
+- **Synthetic portfolio** (`src/modules/stress_test/portfolio.py`, fixed seed 1234): 50 positions (20 loans,
+  18 bonds, 5 options, 5 swaps, 2 FX forwards), ~$992M total notional, all counterparty names clearly
+  fictional (unit-tested against a real-entity blocklist). Rating->PD and LGD-by-seniority are documented
+  illustrative assumptions, not copied from a specific published table.
+- **Pricing** (`pricing.py`): full cashflow discounting for bonds/loans, swap DV01 via bump-and-reprice
+  (not a closed-form shortcut), closed-form Black-Scholes for options, EL = PD x LGD x EAD. 16 hand-checkable
+  tests (closed-form bond price, DV01 sign for payer/receiver, put monotonicity, EL monotonicity, the
+  missing-cache hard-gate, the synthetic-curve flag).
+- **Shock library** (`config/scenarios.yaml`): real Fed severely-adverse numbers for the "severe" tier
+  (cited above); "moderate" (40% interpolation) and the brief's own "geopolitical_example" (+200bp, the
+  opposite direction to the Fed's recessionary scenario) kept explicitly separate and labelled.
+- **Trigger engine** (`trigger.py`): fires on impact > threshold (default 7, matching the brief's example),
+  with a 6h cooldown per (entity-cluster, event-class) so one story doesn't refire repeatedly. 6 tests
+  (threshold boundary, cooldown suppression/expiry, cross-cluster independence).
+- **Revaluation** (`revaluation.py`): before/after value, P&L by asset class/sector/position, EL before/
+  after, top-10 contributors, entity-specific vs portfolio-wide scoping. 8 tests (zero-shock -> zero-P&L,
+  entity scoping, EL scales with the PD multiplier, put value rises in a selloff, breakdowns sum to total).
+- **Naive vs full reprice** (`naive_approx.py`, Phase 4.5 requirement): duration-only vs full bond reprice,
+  delta-only vs full Black-Scholes reprice. 6 tests confirming the approximation error *grows* with shock
+  size (real convexity/gamma effect, not a coincidence of two shortcuts).
+- **Ran for real, end-to-end** (`scripts/run_stress_test.py`) against the real portfolio, the real Treasury
+  curve, real equity spot prices, and the 89 real signals from Phase 1-2: **8 of 89 signals fired** a stress
+  test. Illustrative severe-macro scenario: portfolio value $645.9M -> $606.8M (-6.05%), expected loss
+  $10.1M -> $30.3M. Naive-vs-full comparison on a real portfolio bond: error grows from -$139 at +10bp to
+  -$53,640 at +200bp; on a real portfolio option: error grows from -$0.34 at -5% spot to -$27.68 at -40%
+  spot -- both confirming genuine, growing convexity/gamma error, not noise. Full output in
+  `results/stress_test_output.json`.
+
+75/75 tests passing (`pytest tests/ -q`, 9.78s).
+
+Gate status: **PASS** -- every pricing function verified against a hand-checkable closed-form or known
+sign/monotonicity property; the full pipeline ran against real market data (one real dated snapshot seeded
+via WebFetch, full historical rebuild still pending Aadit's local run) and real signals, not synthetic
+placeholders presented as real.
+
+Not yet done: dashboard visualization of this output (Phase 5), and Module A stretch (only if time remains).

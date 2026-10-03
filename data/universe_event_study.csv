@@ -1,0 +1,84 @@
+ticker,company_name,aliases,sector,country
+AAPL,Apple Inc.,Apple,Technology,US
+MSFT,Microsoft Corporation,Microsoft,Technology,US
+AMZN,Amazon.com Inc.,Amazon,Consumer Discretionary,US
+NVDA,NVIDIA Corporation,Nvidia,Technology,US
+GOOGL,Alphabet Inc.,Google|Alphabet,Technology,US
+META,Meta Platforms Inc.,Meta|Facebook,Technology,US
+JPM,JPMorgan Chase & Co.,JPMorgan|JP Morgan,Financials,US
+GS,Goldman Sachs Group Inc.,Goldman Sachs,Financials,US
+BAC,Bank of America Corp.,Bank of America|BofA,Financials,US
+WFC,Wells Fargo & Co.,Wells Fargo,Financials,US
+MS,Morgan Stanley,Morgan Stanley,Financials,US
+C,Citigroup Inc.,Citigroup|Citi,Financials,US
+TSLA,Tesla Inc.,Tesla,Consumer Discretionary,US
+XOM,Exxon Mobil Corp.,ExxonMobil|Exxon,Energy,US
+CVX,Chevron Corp.,Chevron,Energy,US
+COP,ConocoPhillips,ConocoPhillips,Energy,US
+BA,Boeing Co.,Boeing,Industrials,US
+CAT,Caterpillar Inc.,Caterpillar,Industrials,US
+GE,General Electric Co.,General Electric,Industrials,US
+HON,Honeywell International,Honeywell,Industrials,US
+PFE,Pfizer Inc.,Pfizer,Healthcare,US
+JNJ,Johnson & Johnson,Johnson & Johnson,Healthcare,US
+UNH,UnitedHealth Group,UnitedHealth,Healthcare,US
+MRK,Merck & Co.,Merck,Healthcare,US
+ABBV,AbbVie Inc.,AbbVie,Healthcare,US
+LLY,Eli Lilly and Co.,Eli Lilly,Healthcare,US
+WMT,Walmart Inc.,Walmart,Consumer Staples,US
+COST,Costco Wholesale Corp.,Costco,Consumer Staples,US
+PG,Procter & Gamble Co.,Procter & Gamble|P&G,Consumer Staples,US
+KO,Coca-Cola Co.,Coca-Cola|Coke,Consumer Staples,US
+PEP,PepsiCo Inc.,PepsiCo|Pepsi,Consumer Staples,US
+DIS,Walt Disney Co.,Disney,Communication Services,US
+NFLX,Netflix Inc.,Netflix,Communication Services,US
+CMCSA,Comcast Corp.,Comcast,Communication Services,US
+T,AT&T Inc.,AT&T,Communication Services,US
+VZ,Verizon Communications,Verizon,Communication Services,US
+V,Visa Inc.,Visa,Financials,US
+MA,Mastercard Inc.,Mastercard,Financials,US
+PYPL,PayPal Holdings,PayPal,Financials,US
+AXP,American Express Co.,American Express|Amex,Financials,US
+INTC,Intel Corp.,Intel,Technology,US
+AMD,Advanced Micro Devices,AMD,Technology,US
+CSCO,Cisco Systems Inc.,Cisco,Technology,US
+ORCL,Oracle Corp.,Oracle,Technology,US
+IBM,International Business Machines,IBM,Technology,US
+CRM,Salesforce Inc.,Salesforce,Technology,US
+ADBE,Adobe Inc.,Adobe,Technology,US
+QCOM,QUALCOMM Inc.,Qualcomm,Technology,US
+TXN,Texas Instruments,Texas Instruments,Technology,US
+AVGO,Broadcom Inc.,Broadcom,Technology,US
+UPS,United Parcel Service,UPS,Industrials,US
+FDX,FedEx Corp.,FedEx,Industrials,US
+LMT,Lockheed Martin Corp.,Lockheed Martin,Industrials,US
+RTX,RTX Corp.,Raytheon,Industrials,US
+DE,Deere & Co.,John Deere|Deere,Industrials,US
+MMM,3M Co.,3M,Industrials,US
+NKE,Nike Inc.,Nike,Consumer Discretionary,US
+MCD,McDonald's Corp.,McDonald's,Consumer Discretionary,US
+SBUX,Starbucks Corp.,Starbucks,Consumer Discretionary,US
+HD,Home Depot Inc.,Home Depot,Consumer Discretionary,US
+LOW,Lowe's Companies,Lowe's,Consumer Discretionary,US
+TGT,Target Corp.,Target,Consumer Discretionary,US
+F,Ford Motor Co.,Ford,Consumer Discretionary,US
+GM,General Motors Co.,General Motors,Consumer Discretionary,US
+UBER,Uber Technologies,Uber,Technology,US
+ABNB,Airbnb Inc.,Airbnb,Consumer Discretionary,US
+SPOT,Spotify Technology,Spotify,Communication Services,US
+SNAP,Snap Inc.,Snap|Snapchat,Communication Services,US
+PLTR,Palantir Technologies,Palantir,Technology,US
+COIN,Coinbase Global,Coinbase,Financials,US
+SCHW,Charles Schwab Corp.,Charles Schwab,Financials,US
+BLK,BlackRock Inc.,BlackRock,Financials,US
+SPGI,S&P Global Inc.,S&P Global,Financials,US
+MCO,Moody's Corp.,Moody's,Financials,US
+DUK,Duke Energy Corp.,Duke Energy,Utilities,US
+SO,Southern Co.,Southern Company,Utilities,US
+NEE,NextEra Energy,NextEra,Utilities,US
+LIN,Linde plc,Linde,Materials,US
+NEM,Newmont Corp.,Newmont,Materials,US
+FCX,Freeport-McMoRan,Freeport-McMoRan,Materials,US
+BRK.B,Berkshire Hathaway,Berkshire Hathaway,Financials,US
+PM,Philip Morris International,Philip Morris,Consumer Staples,US
+MO,Altria Group,Altria,Consumer Staples,US

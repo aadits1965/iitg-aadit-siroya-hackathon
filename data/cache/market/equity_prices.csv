@@ -1,0 +1,13 @@
+# source: Yahoo Finance chart API (query1.finance.yahoo.com), fetched live via Claude's WebFetch tool
+# fetched_by: Claude (not scripts/build_cache.py) on 2026-10-04 because this dev sandbox's direct yfinance
+# calls fail (JSON decode errors / 429s) while WebFetch reached Yahoo successfully -- see
+# docs/DATA_VERIFICATION.md section 9. This is a SINGLE-DATE snapshot (2026-10-02 close/last price), enough
+# for Module B's option-underlying spot prices. It is NOT a time series and cannot support the Phase 3
+# event study, which needs a full historical window -- that requires scripts/build_cache.py run from a
+# normal network (see docs/USER_TODO.md).
+date,ticker,close
+2026-10-02,SPY,769.64
+2026-10-02,AAPL,333.69
+2026-10-02,MSFT,517.53
+2026-10-02,NVDA,233.95
+2026-10-02,JPM,332.38

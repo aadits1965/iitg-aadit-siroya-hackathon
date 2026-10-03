@@ -6,7 +6,7 @@ from datetime import date
 
 import pytest
 
-from src.modules.stress_test.curve import YieldCurve
+from src.modules.stress_test.curve import MissingCurveCacheError, YieldCurve, load_curve, synthetic_test_only_curve
 from src.modules.stress_test.pricing import (
     black_scholes,
     bond_price,
@@ -19,7 +19,8 @@ from src.modules.stress_test.pricing import (
 def flat_curve(rate: float) -> YieldCurve:
     # A single-point curve clamps zero_rate() to that one value at every
     # maturity (see YieldCurve.zero_rate), giving a perfectly flat curve.
-    return YieldCurve(as_of=date(2026, 1, 1), rates_by_maturity_years={30.0: rate}, is_fallback=True, source="test")
+    return YieldCurve(as_of=date(2026, 1, 1), rates_by_maturity_years={30.0: rate},
+                       is_synthetic_test_only=True, source="test")
 
 
 class TestBondPricing:
@@ -84,6 +85,18 @@ class TestBlackScholes:
     def test_gamma_nonnegative(self):
         r = black_scholes(spot=100, strike=100, maturity_years=1.0, risk_free_rate=0.04, volatility=0.25, option_type="put")
         assert r.gamma >= 0.0
+
+
+class TestCurveLoading:
+    def test_missing_cache_raises_not_silently_falls_back(self, tmp_path):
+        missing_path = tmp_path / "does_not_exist.csv"
+        with pytest.raises(MissingCurveCacheError):
+            load_curve(cache_path=missing_path)
+
+    def test_synthetic_test_only_curve_is_clearly_flagged(self):
+        c = synthetic_test_only_curve()
+        assert c.is_synthetic_test_only is True
+        assert "SYNTHETIC_TEST_ONLY" in c.source
 
 
 class TestExpectedLoss:

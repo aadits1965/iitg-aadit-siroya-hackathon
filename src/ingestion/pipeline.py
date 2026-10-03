@@ -45,6 +45,28 @@ def ingest_gdelt(max_records: int = 25, timespan: str = "7d") -> tuple[list[Docu
     return result.kept, stats
 
 
+EVENT_STUDY_UNIVERSE_PATH = Path(__file__).resolve().parents[2] / "data" / "universe_event_study.csv"
+
+
+def ingest_gdelt_event_study(max_records: int = 25, timespan: str = "18m") -> tuple[list[Document], IngestStats]:
+    """Wider pull (80 companies, see data/universe_event_study.csv) used only to
+    get the Phase 3 event study's sample size up -- separate from the core
+    20-ticker ingest_gdelt() used by the dashboard/Module B. Longer timespan
+    (GDELT's own docs indicate per-query lookback up to ~1.5 years is usable,
+    see docs/DATA_VERIFICATION.md section 8) to maximise the number of resolvable
+    headlines. This alone is ~80 queries x GDELT's 5s self-throttle -- budget
+    ~10-15 minutes even on a clean connection."""
+    import csv as _csv
+
+    with EVENT_STUDY_UNIVERSE_PATH.open("r", encoding="utf-8") as f:
+        queries = [row["company_name"] for row in _csv.DictReader(f)]
+    adapter = GdeltAdapter()
+    docs = list(adapter.fetch_live(queries=queries, max_records=max_records, timespan=timespan))
+    result = dedup_documents(docs)
+    stats = IngestStats("gdelt_event_study", len(docs), len(result.kept), result.dropped_exact, result.dropped_fuzzy)
+    return result.kept, stats
+
+
 def ingest_mastodon(limit_per_tag: int = 20) -> tuple[list[Document], IngestStats]:
     cfg = load_queries()
     hashtags = cfg["social_hashtags"]
@@ -64,9 +86,18 @@ def ingest_twitter_replay(limit: int = 300) -> tuple[list[Document], IngestStats
     return docs, stats
 
 
-def build_all_caches(gdelt_max_records: int = 25, mastodon_limit_per_tag: int = 20, replay_limit: int = 300) -> list[IngestStats]:
+def build_all_caches(
+    gdelt_max_records: int = 25,
+    mastodon_limit_per_tag: int = 20,
+    replay_limit: int = 300,
+    include_event_study_gdelt: bool = True,
+    include_market_data: bool = True,
+) -> list[IngestStats]:
     """Pulls every source once and writes each to its own cache file in data/cache/.
-    Designed to be re-run (idempotent file overwrite) from a clean network connection."""
+    Designed to be re-run (idempotent file overwrite) from a clean network connection.
+    include_event_study_gdelt adds ~80 extra GDELT queries (~10-15 min) to build
+    the wider sample the Phase 3 event study needs for statistical power --
+    see docs/EVALUATION.md section 3."""
     from src.ingestion.base import SourceAdapter
 
     all_stats = []
@@ -94,5 +125,43 @@ def build_all_caches(gdelt_max_records: int = 25, mastodon_limit_per_tag: int = 
         logger.info("twitter_replay: %s", replay_stats)
     except Exception:
         logger.exception("twitter_replay ingestion failed; cache left untouched")
+
+    if include_event_study_gdelt:
+        try:
+            es_docs, es_stats = ingest_gdelt_event_study(max_records=gdelt_max_records)
+            SourceAdapter.write_jsonl(es_docs, CACHE_DIR / "news_gdelt_event_study.jsonl")
+            all_stats.append(es_stats)
+            logger.info("gdelt_event_study: %s", es_stats)
+        except Exception:
+            logger.exception("gdelt event-study ingestion failed; cache left untouched")
+
+    if include_market_data:
+        try:
+            from datetime import date, timedelta
+
+            from src.ingestion.market_data import fetch_equity_prices, fetch_fred_series, fetch_treasury_curve
+
+            fetch_treasury_curve()
+
+            import csv as _csv
+
+            with EVENT_STUDY_UNIVERSE_PATH.open("r", encoding="utf-8") as f:
+                es_tickers = [row["ticker"] for row in _csv.DictReader(f)]
+            with (Path(__file__).resolve().parents[2] / "data" / "universe.csv").open("r", encoding="utf-8") as f:
+                core_tickers = [row["ticker"] for row in _csv.DictReader(f)]
+            all_tickers = sorted(set(es_tickers) | set(core_tickers))
+            fetch_equity_prices(all_tickers, start=date.today() - timedelta(days=550), end=date.today())
+
+            import os
+
+            fred_key = os.environ.get("FRED_API_KEY")
+            if fred_key:
+                fetch_fred_series(["BAMLH0A0HYM2", "BAMLC0A0CM"], api_key=fred_key)
+            else:
+                logger.warning("FRED_API_KEY not set in .env -- skipping credit-spread series fetch "
+                                "(optional; Module B's shock library can still use documented illustrative "
+                                "spread assumptions without it)")
+        except Exception:
+            logger.exception("market data fetch failed; cache left untouched")
 
     return all_stats

@@ -25,7 +25,14 @@ from scipy.stats import spearmanr
 
 MARKET_TZ = ZoneInfo("America/New_York")
 MARKET_CLOSE_HOUR = 16  # 4pm ET
-MIN_SAMPLE_FOR_CORRELATION = 30  # below this, a correlation number is not meaningful -- refuse to report one
+
+# Power-based threshold, not an arbitrary round number: detecting a modest
+# correlation (r~=0.2, the kind of effect size plausible for a single rule-based
+# severity score against noisy daily abnormal returns) at 80% power needs n~=194
+# (two-sided alpha=0.05; derived from the standard Fisher z-transform sample-size
+# formula for a Pearson/Spearman correlation test). At n=30 the 95% CI for an
+# observed r=0.2 is roughly [-0.17, 0.52] -- wide enough to be uninformative.
+MIN_SAMPLE_FOR_POWER = 200
 
 
 @dataclass
@@ -42,6 +49,7 @@ class EventStudyResult:
     spearman_p: float | None
     ci95: tuple[float, float] | None
     mean_abs_ar_by_decile: list[float] | None
+    power_adequate: bool
     note: str
 
 
@@ -106,18 +114,19 @@ def compute_abnormal_returns(records: list[EventRecord], price_fetcher) -> list[
 def run_event_study(records: list[EventRecord], price_fetcher) -> EventStudyResult:
     resolved = compute_abnormal_returns(records, price_fetcher)
     n = len(resolved)
+    power_adequate = n >= MIN_SAMPLE_FOR_POWER
 
-    if n < MIN_SAMPLE_FOR_CORRELATION:
+    if n < 3:
         return EventStudyResult(
             n=n,
             spearman_r=None,
             spearman_p=None,
             ci95=None,
             mean_abs_ar_by_decile=None,
+            power_adequate=False,
             note=(
-                f"n={n} resolved events, below the minimum of {MIN_SAMPLE_FOR_CORRELATION} this project "
-                "treats as meaningful for a correlation estimate. No correlation number is reported -- "
-                "reporting one at this sample size would be noise presented as signal."
+                f"n={n} resolved events -- too few to compute a correlation or a bootstrap CI at all "
+                "(need at least 3 points). No number is reported."
             ),
         )
 
@@ -138,14 +147,23 @@ def run_event_study(records: list[EventRecord], price_fetcher) -> EventStudyResu
     deciles = np.clip((np.argsort(np.argsort(impacts)) * 10 // n), 0, 9)
     mean_by_decile = [float(abs_ars[deciles == k].mean()) if (deciles == k).any() else float("nan") for k in range(10)]
 
+    power_note = (
+        f"n={n} meets the n>={MIN_SAMPLE_FOR_POWER} threshold for ~80% power to detect r~=0.2 at alpha=0.05."
+        if power_adequate else
+        f"UNDERPOWERED: n={n} is below the n>={MIN_SAMPLE_FOR_POWER} threshold for ~80% power to detect "
+        f"r~=0.2. The point estimate and CI below are reported as computed, but this sample size cannot "
+        f"reliably distinguish a real small-to-moderate correlation from noise -- treat the wide CI as the "
+        f"headline, not the point estimate."
+    )
     return EventStudyResult(
         n=n,
         spearman_r=float(r),
         spearman_p=float(p),
         ci95=(float(lo), float(hi)),
         mean_abs_ar_by_decile=mean_by_decile,
-        note="Association only, not causation. Confounders (earnings dates, market-wide days, multiple "
-             "same-day news items per ticker) are not controlled for.",
+        power_adequate=power_adequate,
+        note=power_note + " Association only, not causation. Confounders (earnings dates, market-wide days, "
+             "multiple same-day news items per ticker) are not controlled for.",
     )
 
 
@@ -161,3 +179,24 @@ def yfinance_price_fetcher(ticker: str, start: datetime, end: datetime):
         close = close.squeeze()
     close.index = pd.to_datetime(close.index).tz_localize(None).normalize()
     return close
+
+
+def make_cached_price_fetcher(cache_path):
+    """Reads data/cache/market/equity_prices.csv (built by
+    scripts/build_cache.py / src/ingestion/market_data.py) instead of calling
+    yfinance live -- keeps the event study reproducible/offline once the cache
+    exists. Returns None for a ticker/window with no cached coverage, so the
+    caller falls back to live yfinance for that one ticker rather than failing
+    the whole run."""
+    import pandas as pd
+
+    df = pd.read_csv(cache_path, comment="#")
+    df["date"] = pd.to_datetime(df["date"])
+
+    def fetcher(ticker: str, start: datetime, end: datetime):
+        sub = df[(df["ticker"] == ticker) & (df["date"] >= pd.Timestamp(start.date())) & (df["date"] <= pd.Timestamp(end.date()))]
+        if sub.empty:
+            return None
+        return sub.set_index("date")["close"]
+
+    return fetcher

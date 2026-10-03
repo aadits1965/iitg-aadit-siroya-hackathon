@@ -119,6 +119,14 @@ def black_scholes(
     return OptionResult(price=price, delta=delta, gamma=gamma)
 
 
+def fx_forward_value(notional: float, fx_pct_move: float) -> float:
+    """Simplification, stated plainly: linear P&L = notional x FX % move. A full
+    forward-points / covered-interest-parity reprice is out of scope for this
+    prototype (FX is a secondary shock channel here, not the primary one) --
+    see docs/ASSUMPTIONS.md."""
+    return notional * fx_pct_move
+
+
 def expected_loss(ead: float, pd: float, lgd: float) -> float:
     """EL = PD x LGD x EAD -- the standard credit-risk expected-loss identity."""
     return ead * pd * lgd

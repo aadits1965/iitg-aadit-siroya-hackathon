@@ -1,42 +1,33 @@
 """Discount curve: loads a dated US Treasury par-yield snapshot and provides
 linear-interpolated zero rates for discounting cashflows at arbitrary maturities.
 
-Real snapshots are fetched by scripts/build_market_data_cache.py (requires
-network access this dev sandbox does not currently have to treasury.gov --
-confirmed via a direct connection test, HTTP code 000 / connection failure, as
-opposed to GDELT's HTTP 429 -- see docs/DATA_VERIFICATION.md). Until that cache
-exists, FALLBACK_CURVE below is used, and every object built from it is tagged
-`is_fallback=True` so no downstream output can silently claim to be real market
-data. FALLBACK_CURVE's values are a clearly-labelled illustrative curve, not a
-quote from any dated real snapshot.
+Real snapshots are written to CACHE_PATH by scripts/build_cache.py (meant to be
+run from a normal network -- this dev sandbox's direct network calls to
+treasury.gov fail outright, HTTP code 000; see docs/DATA_VERIFICATION.md
+section 9). `load_curve()` reads ONLY that cache file and **raises** if it is
+missing -- there is no silent fallback. The only synthetic curve in this module
+is `synthetic_test_only_curve()`, which is never called by `load_curve()` and
+must never be wired into any production path (dashboard, deck, metrics.json) --
+tests use it explicitly and by name so that is always visible in a diff/review.
 """
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass, field
-from datetime import date
+from dataclasses import dataclass
+from datetime import date, datetime
 from pathlib import Path
 
 import numpy as np
 
 CACHE_PATH = Path(__file__).resolve().parents[3] / "data" / "cache" / "market" / "treasury_par_yield_curve.csv"
 
-# Illustrative only -- NOT a real quoted curve. Roughly curve-shaped (short rates
-# below long rates) purely so pricing math has believable-looking but clearly
-# non-authoritative numbers to run against before a real snapshot is cached.
-FALLBACK_CURVE = {
-    1 / 12: 0.0430, 2 / 12: 0.0428, 3 / 12: 0.0425, 6 / 12: 0.0415,
-    1.0: 0.0400, 2.0: 0.0385, 3.0: 0.0378, 5.0: 0.0375,
-    7.0: 0.0380, 10.0: 0.0390, 20.0: 0.0420, 30.0: 0.0430,
-}
-
 
 @dataclass
 class YieldCurve:
     as_of: date
     rates_by_maturity_years: dict[float, float]  # par yield, decimal (0.04 = 4%)
-    is_fallback: bool = False
-    source: str = ""
+    is_synthetic_test_only: bool
+    source: str
 
     def zero_rate(self, maturity_years: float) -> float:
         """Linear interpolation on the par curve, used as a zero-rate proxy.
@@ -59,26 +50,71 @@ class YieldCurve:
         for m, r in self.rates_by_maturity_years.items():
             shift = parallel_bp / 10000.0 + (steepener_bp_per_10y / 10000.0) * (m / 10.0)
             new_rates[m] = r + shift
-        return YieldCurve(as_of=self.as_of, rates_by_maturity_years=new_rates, is_fallback=self.is_fallback,
-                           source=self.source + " +shock")
+        return YieldCurve(as_of=self.as_of, rates_by_maturity_years=new_rates,
+                           is_synthetic_test_only=self.is_synthetic_test_only, source=self.source + " +shock")
 
 
-def load_curve() -> YieldCurve:
-    if CACHE_PATH.exists():
-        rows = []
-        with CACHE_PATH.open("r", encoding="utf-8") as f:
-            for row in csv.DictReader(f):
-                rows.append((float(row["maturity_years"]), float(row["par_yield"])))
-        as_of_str = CACHE_PATH.read_text(encoding="utf-8").splitlines()[0]
-        return YieldCurve(
-            as_of=date.today(),
-            rates_by_maturity_years=dict(rows),
-            is_fallback=False,
-            source=f"US Treasury daily par yield curve, cached from {CACHE_PATH.name}",
+class MissingCurveCacheError(RuntimeError):
+    pass
+
+
+def load_curve(cache_path: Path = CACHE_PATH) -> YieldCurve:
+    """Real data only. Raises MissingCurveCacheError if the cache hasn't been
+    built yet -- callers (revaluation scripts, the dashboard) must not catch
+    this and silently substitute a synthetic curve; see docs/USER_TODO.md for
+    the one-time fetch step."""
+    if not cache_path.exists():
+        raise MissingCurveCacheError(
+            f"{cache_path} not found. Run `python scripts/build_cache.py` (from a normal network -- "
+            "treasury.gov is unreachable from the dev sandbox, see docs/DATA_VERIFICATION.md section 9) "
+            "to fetch a real dated yield curve snapshot before running Module B."
         )
+
+    as_of = None
+    source_lines = []
+    rates: dict[float, float] = {}
+    with cache_path.open("r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    header_idx = 0
+    for i, line in enumerate(lines):
+        if line.startswith("#"):
+            stripped = line.lstrip("#").strip()
+            if stripped.startswith("as_of:"):
+                as_of = datetime.strptime(stripped.split(":", 1)[1].strip(), "%Y-%m-%d").date()
+            else:
+                source_lines.append(stripped)
+            header_idx = i + 1
+        else:
+            break
+
+    reader = csv.DictReader(lines[header_idx:])
+    for row in reader:
+        rates[float(row["maturity_years"])] = float(row["par_yield"])
+
+    if as_of is None or not rates:
+        raise MissingCurveCacheError(f"{cache_path} exists but is malformed (missing '# as_of:' header or rows).")
+
     return YieldCurve(
-        as_of=date.today(),
-        rates_by_maturity_years=dict(FALLBACK_CURVE),
-        is_fallback=True,
-        source="FALLBACK_CURVE (illustrative, not a real dated quote -- see module docstring)",
+        as_of=as_of,
+        rates_by_maturity_years=rates,
+        is_synthetic_test_only=False,
+        source=" | ".join(source_lines) or f"cached from {cache_path.name}",
+    )
+
+
+def synthetic_test_only_curve() -> YieldCurve:
+    """A clearly-labelled, non-real curve for unit tests ONLY. Never call this
+    from a revaluation/dashboard/deck/metrics code path -- `is_synthetic_test_only`
+    is set so any accidental use is easy to assert against and catch in review."""
+    return YieldCurve(
+        as_of=date(1970, 1, 1),
+        rates_by_maturity_years={
+            1 / 12: 0.0430, 2 / 12: 0.0428, 3 / 12: 0.0425, 6 / 12: 0.0415,
+            1.0: 0.0400, 2.0: 0.0385, 3.0: 0.0378, 5.0: 0.0375,
+            7.0: 0.0380, 10.0: 0.0390, 20.0: 0.0420, 30.0: 0.0430,
+        },
+        is_synthetic_test_only=True,
+        source="SYNTHETIC_TEST_ONLY -- illustrative numbers, not a real dated quote. Must never appear in "
+               "results/metrics.json, the dashboard, or the deck.",
     )
