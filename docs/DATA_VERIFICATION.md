@@ -80,11 +80,83 @@ or JUDGMENT (a call made based on the facts).
   community issue, not independently re-verified here. JUDGMENT: cache every pulled series to `data/cache/`
   so the demo never depends on live Yahoo availability at pitch time.
 
-## Net effect on scope
+## 8. Addendum (2026-10-04, post-Phase-0 review) — live social source, GDELT depth/fields, dev-sandbox network constraint
 
-- News: GDELT (primary, live+replay) + NewsAPI (optional, live-only, non-blocking).
-- Social: `zeroshot/twitter-financial-news-sentiment` replay (not live) — documented limitation.
-- Sentiment eval: `zeroshot/twitter-financial-news-sentiment` validation split (confirmed no overlap with
-  FinBERT's fine-tuning data).
+### Live social source: Bluesky vs Mastodon
+- FACT: Bluesky's unauthenticated public endpoint (`public.api.bsky.app/xrpc/app.bsky.feed.searchPosts`) returned
+  **HTTP 403** from this environment, with and without a browser-like User-Agent. Not usable as-is.
+- FACT: **Mastodon public hashtag timelines work with no auth** — tested live:
+  `GET https://mastodon.social/api/v1/timelines/tag/stocks?limit=2` returned `200 OK` with real posts, each
+  carrying a `created_at` timestamp (e.g. `"2026-10-02T15:46:09.000Z"`). Response headers show a published
+  rate limit: `x-ratelimit-limit: 300` requests per 5-minute window, `x-ratelimit-remaining` /
+  `x-ratelimit-reset` returned on every call.
+- **Decision:** Mastodon hashtag timelines (`#stocks`, `#investing`, `#financial`, etc., across one or more
+  public instances) become the **live** social adapter. The `zeroshot/twitter-financial-news-sentiment`
+  dataset remains the **offline replay fallback** (`--demo` mode / when Mastodon is unreachable), exactly as
+  suggested. Both paths feed the same normalised record schema (§Phase 1).
+
+### Does the tweet-replay dataset have timestamps? → No. Event study moves to GDELT.
+- FACT: queried the dataset's actual schema via the HF datasets-server `/info` endpoint. Features are
+  **only** `text` (string) and `label` (int64) — no date/timestamp field exists in either split.
+- CONSEQUENCE: this dataset cannot be used for the Phase 3 impact-score event study (no way to align a post
+  to a trading day). **The event study will be built entirely on timestamped GDELT headlines instead**, as
+  instructed.
+
+### GDELT DOC 2.0: historical window, and title-only vs full body
+- FACT (from GDELT's own blog post titles/docs): the DOC 2.0 API's searchable index covers back to
+  **2017-01-01**, but a given query is only guaranteed effective over a bounded recent window — GDELT's own
+  "DOC 2.0 Updates: 1.5 Year Searching" post indicates the practical per-query search window was extended
+  from 3 months to roughly 1.5 years, not unlimited. JUDGMENT: treat per-query lookback as **up to ~1.5 years,
+  not indefinite**, and verify the actual usable range empirically once live queries succeed (see constraint
+  below) before sizing the event-study sample.
+- FACT: the DOC 2.0 `artlist`/JSON mode returns these fields only: `url`, `url_mobile`, `title`, `seendate`
+  (format `YYYYMMDDTHHMMSSZ`), `domain`, `language`, `sourcecountry`, `socialimage`. **There is no article-body
+  field.** GDELT DOC is a metadata/headline index, not a full-text source.
+- **Design constraint, to be stated in README + docs/ASSUMPTIONS.md:** this project's NLP runs on
+  **headline-level text only** for the GDELT-sourced news channel (title + any short social/meta description
+  available), not full article bodies. No article scraping is performed — scraping full bodies would mean
+  fetching and redistributing third-party publisher content beyond what GDELT's own CC0 metadata licence
+  covers, which this project avoids entirely.
+
+### Dev-sandbox network constraint (does not affect the end-user's own machine)
+- FACT: from this development environment's outbound IP, **GDELT DOC 2.0 consistently returns HTTP 429**
+  ("Please limit requests to one every 5 seconds…") on every attempt, including after 5s, 20s, and 45s+ waits
+  and with a minimal single-field query — i.e. not a simple per-request cooldown, but this IP/IP-range already
+  over GDELT's ceiling, most likely because this sandbox's egress IP is shared across many concurrent agent
+  sessions. The same pattern showed up on other publisher endpoints tested from here (Yahoo Finance RSS → 429,
+  CNBC RSS → 403 Akamai block), confirming it's an IP-reputation issue with this sandbox, not specific to GDELT.
+- FACT: **Google News RSS** (`news.google.com/rss/search?q=...`) was reachable (200 OK) from this same
+  environment and returns titled, linked, dated items. However, its feed explicitly states: *"made available
+  solely for the purpose of rendering Google News results within a personal feed reader for personal,
+  non-commercial use. Any other use... is expressly prohibited."* JUDGMENT: fine to use for **ephemeral
+  live-mode fetching** (a personal, non-commercial prototype matches its stated terms) but its content must
+  **never** be bulk-cached into `/data` for redistribution in the public repo — that would exceed the licence.
+- **Decision:**
+  1. The GDELT adapter is built fully correct against GDELT's real, documented schema (confirmed above), with
+     retry/backoff on 429. It will work from a normal (non-shared, non-datacenter) network — i.e. Aadit's own
+     machine. This is logged in `docs/USER_TODO.md`: run `python scripts/build_cache.py` once from a normal
+     network connection to populate a real, redistributable `data/cache/news_gdelt.jsonl` before the demo.
+  2. Parsing/dedup logic is unit-tested against **fixture JSON shaped exactly like GDELT's real schema**
+     (field names/format confirmed live above), clearly labeled as test fixtures, never presented as real
+     fetched articles.
+  3. Mastodon (confirmed working from this sandbox right now) is used to pull **real, live, cached** social
+     data today, so at least one channel's `data/cache/` content is genuinely live-fetched rather than only a
+     fixture.
+
+## Net effect on scope (superseded fields updated by §8 addendum above)
+
+- News: GDELT (primary, live+replay, headline-level only — no article body) + NewsAPI (optional, live-only,
+  non-blocking) + Google News RSS (ephemeral live-mode use only, never cached/redistributed).
+- Social: **Mastodon public hashtag timelines (live adapter, confirmed working, timestamped)**, with
+  `zeroshot/twitter-financial-news-sentiment` as the **offline replay fallback** (confirmed no timestamps,
+  so replay-only, and excluded from the event study).
+- Sentiment eval: `zeroshot/twitter-financial-news-sentiment` **validation split**, used strictly for scoring
+  only — no threshold, label-mapping, or weight tuning is done on it (tuning happens on train split / fixed
+  a-priori rules only; see docs/ASSUMPTIONS.md).
+- Impact-score event study (Phase 3): **GDELT timestamped headlines**, not the tweet dataset (which has no
+  dates).
 - Rates: US Treasury par curve + FRED credit spreads.
 - Equities: yfinance.
+- **Known dev-environment constraint:** GDELT and several publisher RSS feeds return 429/403 from this
+  sandbox's shared egress IP. Code is written against GDELT's confirmed-real schema either way; a one-time
+  cache-build run from a normal network is required before the demo (see docs/USER_TODO.md).

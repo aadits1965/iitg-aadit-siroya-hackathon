@@ -1,5 +1,10 @@
 # Things Only Aadit Can Do
 
+- [ ] **Run `python scripts/build_cache.py` once from a normal (non-shared, non-datacenter) network** — e.g.
+      your laptop on home/college wifi — to populate `data/cache/news_gdelt.jsonl` with real GDELT headlines.
+      The dev sandbox's shared IP is persistently rate-limited/blocked by GDELT and several news RSS feeds
+      (confirmed HTTP 429/403 on every retry); this is an IP-reputation issue with the sandbox, not with
+      GDELT itself. See `docs/DATA_VERIFICATION.md` §8 for the full evidence trail.
 - [ ] **Confirm with organisers:** the guidelines doc says demo video = "10 mins screen recording" but the
       platform's Required Deliverables says live demo "not to exceed 5 minutes". This build targets **<=5:00**
       to satisfy both readings. Confirm which is authoritative if possible.
