@@ -1,0 +1,31 @@
+# Impact Score (1-10) composite weights. ALL values here are illustrative
+# assumptions with no empirical calibration source, stated plainly per
+# docs/ASSUMPTIONS.md. They are fixed before Phase 3 evaluation runs and are not
+# tuned against evaluation results (see the no-tuning-on-eval-split rule).
+
+component_weights:
+  sentiment_magnitude: 0.25   # |sentiment score|, already 0..1
+  event_severity_prior: 0.35  # per-class prior, see event_severity_prior below
+  source_breadth: 0.15        # distinct sources covering this story in the time window
+  entity_importance: 0.15     # how central/large the affected entity is
+  novelty: 0.10                # first-seen vs repeat coverage of the same story cluster
+
+event_severity_prior:
+  Geopolitical: 0.90
+  Credit Event: 0.85
+  Macroeconomic: 0.80
+  Merger/Acquisition: 0.55
+  Product Launch: 0.30
+  Other: 0.20
+
+source_breadth_cap: 3   # number of distinct sources at which this component saturates at 1.0
+
+entity_importance:
+  has_ticker_match: 1.0     # a named company in the 20-ticker universe is mentioned
+  macro_only: 0.70          # macro/geopolitical tag but no specific company
+
+novelty:
+  first_seen: 1.0
+  repeat_within_cooldown: 0.20  # same story cluster seen again before cooldown elapses
+
+# Final score = 1 + 9 * weighted_sum(components), clipped to [1, 10].

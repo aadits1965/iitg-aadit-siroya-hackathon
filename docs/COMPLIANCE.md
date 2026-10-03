@@ -3,9 +3,14 @@
 Ticked only when verified with evidence (file path / command output). Updated at the end of every phase.
 
 ## Problem brief
-- [ ] Core AI/NLP Risk Engine ingests text from >= 2 distinct sources (news + social).
-- [ ] Outputs Sentiment Score (-1..1), Event Classification, Impact Score (1-10) per doc/entity.
-- [ ] Signals available downstream via API and/or file.
+- [x] Core AI/NLP Risk Engine ingests text from >= 2 distinct sources (news + social). Evidence: Mastodon
+      (live, 73 real posts cached) + Twitter-replay (300 real rows) both running through the same engine,
+      89 signals produced. GDELT (news) adapter built and unit-tested but not yet live-verified end-to-end
+      (sandbox network block — see docs/USER_TODO.md for the one-time cache-build step).
+- [x] Outputs Sentiment Score (-1..1), Event Classification, Impact Score (1-10) per doc/entity. Evidence:
+      `results/signals.jsonl`, 89 real signals, each with sentiment/event/impact blocks + component breakdown.
+- [x] Signals available downstream via API and/or file. Evidence: `results/signals.jsonl` +
+      `GET /signals` (FastAPI), both tested against real data.
 - [ ] At least one downstream module built (Module B — Strategic Portfolio Stress Testing).
 - [ ] Module B: subscribes to Event Class + Impact Score; synthetic portfolio with loans+bonds+derivatives;
       high-impact event triggers stress test; dashboard shows value before vs after.

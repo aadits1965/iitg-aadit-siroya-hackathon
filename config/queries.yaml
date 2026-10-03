@@ -1,0 +1,30 @@
+# Seed query terms for ingestion (Phase 1). A fuller ticker/alias universe is built
+# in Phase 2 (data/universe.csv) for entity linking; this file only drives what gets
+# pulled from the news/social sources.
+
+companies:
+  - "Apple AAPL"
+  - "Microsoft MSFT"
+  - "Amazon AMZN"
+  - "Nvidia NVDA"
+  - "JPMorgan JPM"
+  - "Goldman Sachs GS"
+  - "Tesla TSLA"
+  - "ExxonMobil XOM"
+  - "Boeing BA"
+  - "Pfizer PFE"
+
+macro_geopolitical:
+  - "Federal Reserve interest rate"
+  - "US Treasury yields"
+  - "geopolitical risk sanctions"
+  - "credit rating downgrade"
+  - "merger acquisition deal"
+  - "stock market selloff"
+
+social_hashtags:
+  - "stocks"
+  - "investing"
+  - "markets"
+  - "wallstreet"
+  - "finance"

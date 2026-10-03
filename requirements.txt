@@ -6,11 +6,11 @@ requests==2.32.3
 
 # Ingestion / NLP
 rapidfuzz==3.10.1
-spacy==3.8.2
 transformers==4.46.3
 torch==2.5.1
 scipy==1.14.1
 scikit-learn==1.5.2
+vaderSentiment==3.3.2
 
 # Data / finance
 pandas==2.2.3
@@ -31,6 +31,7 @@ matplotlib==3.9.3
 
 # Testing
 pytest==8.3.4
+httpx==0.27.2  # required by fastapi.testclient.TestClient
 
 # NOTE: torch is CPU-only on this machine. If `pip install torch==2.5.1` pulls a CUDA
 # build or fails, install via:
