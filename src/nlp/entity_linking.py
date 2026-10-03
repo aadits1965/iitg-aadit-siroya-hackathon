@@ -54,15 +54,37 @@ MACRO_KEYWORDS = {
     "china": ("GEOPOLITICAL", "CN"),
     "opec": ("MACRO", None),
 }
+# Plain substring matching (`kw in lowered`) is dangerous for short keywords:
+# "war" matches inside "warns"/"warning"/"forward"/"award" etc. Found via a
+# real signal where 4 of 5 clustered "<analyst firm> warns on <company>"
+# headlines got spuriously tagged GEOPOLITICAL (see docs/DATA_VERIFICATION.md
+# section 12). Every keyword is matched with explicit word boundaries instead.
+_MACRO_KEYWORD_PATTERNS = {
+    kw: re.compile(r"(?<!\w)" + re.escape(kw) + r"(?!\w)", re.IGNORECASE) for kw in MACRO_KEYWORDS
+}
 
 # Company names that collide with a common English word or a generic financial
 # phrase -- excluded from free-text (case-insensitive) alias matching. Only the
 # fuller legal name (company_name, e.g. "Target Corp.") or a $CASHTAG still
-# matches. Found via the 50-headline manual audit (docs/DATA_VERIFICATION.md
-# section 11); Visa/Target/Apple/Oracle were flagged for review, "Target" was
-# confirmed as by far the dominant false-positive source (collides with
-# "price target" / "stock price target", ubiquitous in financial headlines).
-AMBIGUOUS_BARE_ALIASES = {"target", "visa", "apple", "oracle"}
+# matches.
+#
+# Visa/Target/Apple/Oracle were all flagged for review in the 50-headline
+# manual audit (docs/DATA_VERIFICATION.md section 11). A follow-up recall
+# check across the full ~973-document corpus (section 13) then measured each
+# one directly rather than leaving all four excluded on suspicion alone:
+#   - "target": 151 bare occurrences, ZERO were genuine Target Corp mentions
+#     (150 were the generic "price target" phrase, 1 was a different company,
+#     "Target Hospitality") -- excluding it is a pure precision win, no
+#     measured recall cost in this corpus.
+#   - "apple"/"oracle": 5 and 1 bare occurrences respectively, and EVERY ONE
+#     was a genuine mention of the company (Apple Card, Apple's China stores,
+#     Oracle's sales outlook, etc.) -- zero false-positive benefit was ever
+#     found for either word, so excluding them was pure recall loss with no
+#     offsetting precision gain. Both were REMOVED from this set as a result.
+# "visa" had zero occurrences either way in this corpus, so it is kept
+# excluded on the original (untested-here) collision concern -- re-evaluate
+# if/when real data surfaces a genuine Visa Inc. mention to check against.
+AMBIGUOUS_BARE_ALIASES = {"target", "visa"}
 
 # Major sell-side banks that frequently appear in financial headlines as the
 # SOURCE of a rating action on a different company, not as the subject --
@@ -187,9 +209,8 @@ class EntityLinker:
             matched_countries.append(entry.country)
 
         macro_tags: list[str] = []
-        lowered = text.lower()
         for kw, (tag, country) in MACRO_KEYWORDS.items():
-            if kw in lowered:
+            if _MACRO_KEYWORD_PATTERNS[kw].search(text):
                 if tag not in macro_tags:
                     macro_tags.append(tag)
                 if country and country not in matched_countries:

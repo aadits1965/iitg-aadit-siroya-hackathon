@@ -268,3 +268,36 @@ Status: **DONE**
 
 100/100 tests passing. Gate status: **PASS** -- every point addressed with real code changes, real
 re-measured evidence, and real regenerated output, not just documentation claims.
+
+## Third review round (before Phase 5) -- event classification, CIs, documentation
+Status: **DONE**
+
+1. **Confirmed the Disney headline was an equity-analyst action**, not a credit-rating action ("Disney
+   downgraded as **analyst says** parks attendance could take 2 years to 'normalize'"). Fixed
+   `RuleBasedEventClassifier`: bare "downgrade" now only counts toward Credit Event when explicit
+   credit-market vocabulary is also present. A first (opposite-direction) fix attempt was caught missing a
+   second real case on re-run ("Take-Two downgraded on murky game slate", no explicit analyst word at all)
+   -- inverted to the more conservative default. **A further, unrelated bug surfaced while verifying the
+   re-run**: "war" matched as a bare substring inside "warns", spuriously tagging a 5-headline analyst-note
+   cluster Geopolitical -- fixed with word-boundary regex matching in both `event_classification.py` and
+   `entity_linking.py`. 11 new regression tests. Re-ran the full pipeline: 76 signals (down from 86), 3
+   fired (down from 6), headline is now a clean Macroeconomic trigger ("US stock futures slip ahead of
+   #inflation report"), not an artifact of either bug.
+2. **Entity-linking stats with CIs**: Wilson 95% CI for 44/48 = [80.4%, 96.7%]. Fresh independent sample
+   (600 newly-pulled real rows, since only 14 of the original pool's linked docs were unused) scored
+   52/55 = 94.5%, CI [85.1%, 98.1%]; pooled 96/103 = 93.2%, CI [86.6%, 96.7%]. **Recall spot-check**: random
+   sampling was too noisy to find 30 genuine candidates (only 2/80), so switched to a targeted search of
+   the full ~973-doc corpus for every occurrence of the four originally-excluded ambiguous aliases. Result
+   directly changed the shipped rule: "target" cost **zero** measured recall (0/151 bare occurrences were
+   genuine Target Corp mentions) so stays excluded, but "apple"/"oracle" cost **100%** recall (6/6 genuine
+   mentions missed, zero offsetting FP benefit found) so both were **removed** from the exclusion set.
+3. **Documented 4 further limitations in `docs/ASSUMPTIONS.md`**: (a) a real-company signal shocks
+   fictional portfolio positions by sector/country match, not by name -- an explicit sector-contagion
+   assumption; (b) the Fed scenario's peak/trough is applied as one instantaneous shock, not its real
+   ~2-year quarterly path; (c) replayed historical tweets (pre-2026 content, synthetic timestamps) are
+   priced against a genuinely-dated 2026-10-02 market snapshot -- a real temporal mismatch, disclosed; (d)
+   1-year EL approximates IFRS 9 Stage 1 only -- a real stress scenario would typically trigger Stage 2/3
+   staging and lifetime ECL under the accounting standard, so this project's stressed credit-loss numbers
+   are a lower bound, not a standard-compliant figure.
+
+112/112 tests passing.

@@ -34,6 +34,18 @@ class TestAmbiguousBareAliasesExcluded:
         m = linker().link("Target Corp. reported quarterly earnings above expectations")
         assert "TGT" in m.tickers
 
+    def test_bare_apple_matches(self):
+        """Apple/Oracle were removed from the exclusion set after a recall
+        check found zero false-positive benefit for either across the full
+        corpus (6/6 bare occurrences were genuine company mentions) -- see
+        docs/DATA_VERIFICATION.md section 13."""
+        m = linker().link("Apple closing all China stores and offices")
+        assert "AAPL" in m.tickers
+
+    def test_bare_oracle_matches(self):
+        m = linker().link("Oracle's Need for 'Steep' Sales Climb Leaves Street Cautious")
+        assert "ORCL" in m.tickers
+
 
 class TestBareTickerVerbCollisionExcluded:
     def test_ups_verb_does_not_match_united_parcel_service(self):

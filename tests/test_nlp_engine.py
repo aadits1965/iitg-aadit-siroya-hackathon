@@ -52,6 +52,18 @@ class TestEntityLinker:
         assert m.tickers == []
         assert "MACRO" in m.macro_tags
 
+    def test_warns_does_not_spuriously_tag_geopolitical(self):
+        """Regression test: 'war' matched as a bare substring inside 'warns',
+        spuriously tagging routine analyst-note headlines GEOPOLITICAL."""
+        linker = EntityLinker()
+        m = linker.link("Moody's warns on Harley-Davidson")
+        assert "GEOPOLITICAL" not in m.macro_tags
+
+    def test_genuine_war_keyword_still_tagged(self):
+        linker = EntityLinker()
+        m = linker.link("Escalating war in the region threatens regional stability")
+        assert "GEOPOLITICAL" in m.macro_tags
+
     def test_unrelated_text_tagged_market(self):
         linker = EntityLinker()
         m = linker.link("Local bakery wins regional pastry competition")
@@ -92,6 +104,62 @@ class TestRuleEventClassifier:
         clf = RuleBasedEventClassifier()
         r = clf.classify("A pleasant walk in the park on a sunny afternoon")
         assert r.event_class == "Other"
+
+    def test_credit_event_still_detected_with_agency_language(self):
+        """A genuine credit-rating-agency action must still be caught even
+        though it also contains analyst-adjacent words like "rating"."""
+        clf = RuleBasedEventClassifier()
+        r = clf.classify("Moody's downgrades company credit rating to junk status amid default risk")
+        assert r.event_class == "Credit Event"
+
+    def test_equity_analyst_downgrade_is_not_credit_event(self):
+        """Regression test for a real false positive in production signal
+        output: 'Disney downgraded as analyst says parks attendance could take
+        2 years to normalize' was wrongly tagged Credit Event at 0.99
+        confidence. An equity analyst cutting a stock rating says nothing
+        about creditworthiness."""
+        clf = RuleBasedEventClassifier()
+        r = clf.classify("Disney downgraded as analyst says parks attendance could take 2 years to 'normalize'")
+        assert r.event_class != "Credit Event"
+
+    def test_price_target_cut_is_not_credit_event(self):
+        clf = RuleBasedEventClassifier()
+        r = clf.classify("Netflix stock price target cut as analyst downgrades to underperform")
+        assert r.event_class != "Credit Event"
+
+    def test_analyst_downgrade_to_rating_phrase_is_not_credit_event(self):
+        clf = RuleBasedEventClassifier()
+        r = clf.classify("AT&T downgraded to underweight from neutral at JPMorgan")
+        assert r.event_class != "Credit Event"
+
+    def test_bare_downgrade_with_credit_market_language_still_credit_event(self):
+        clf = RuleBasedEventClassifier()
+        r = clf.classify("Company bonds downgrade amid restructuring concerns")
+        assert r.event_class == "Credit Event"
+
+    def test_warns_does_not_spuriously_match_war_keyword(self):
+        """Regression test for a real false positive: '<analyst> warns on
+        <company>' headlines were spuriously tagged Geopolitical because
+        "war" matched as a bare substring inside "warns"."""
+        clf = RuleBasedEventClassifier()
+        r = clf.classify("Moody's warns on Harley-Davidson")
+        assert r.event_class != "Geopolitical"
+
+    def test_genuine_war_keyword_still_detected(self):
+        clf = RuleBasedEventClassifier()
+        r = clf.classify("Escalating war in the region threatens regional stability")
+        assert r.event_class == "Geopolitical"
+
+    def test_terse_analyst_downgrade_with_no_explicit_analyst_word_not_credit_event(self):
+        """Regression test for a second real false positive found when
+        re-running the engine after the first fix: 'Take-Two downgraded on
+        murky game slate' has no explicit "analyst"/"price target" word at
+        all, so a fix gated on those words alone would still miss it -- the
+        rule must instead require explicit credit-market vocabulary to be
+        PRESENT, not merely absence of analyst words."""
+        clf = RuleBasedEventClassifier()
+        r = clf.classify("Take-Two downgraded on murky game slate")
+        assert r.event_class != "Credit Event"
 
 
 class TestRiskEngineClustering:

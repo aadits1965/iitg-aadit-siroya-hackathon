@@ -257,6 +257,89 @@ output before this fix. `results/signals.jsonl` and `results/stress_test_output.
 after the fix (86 signals, down from 89; 6 fired stress tests, down from 8 — the removed signals/triggers
 were exactly the ones built on a now-corrected false-positive entity link).
 
+## 12. Addendum (2026-10-04, second post-Phase-4 review) — event classification: analyst actions vs credit events
+
+Requested check: confirm whether the headline behind the "Disney credit downgrade" signal was a genuine
+credit-rating action or an equity-analyst action, and fix the classifier if conflated.
+
+**Confirmed from real signal data** (`results/signals.jsonl`, signal `sig_62fabd059044e2ab` in the pre-fix
+run): the exact headline was **"Disney downgraded as analyst says parks attendance could take 2 years to
+'normalize'"** — explicitly an equity-analyst stock-rating opinion (the word "analyst" is right there), not
+a credit-rating-agency action (no Moody's/S&P/Fitch, no bond/debt language). The rule classifier tagged it
+Credit Event at 0.99 confidence purely because the keyword list contained bare "downgrade".
+
+**Fix** (`src/nlp/event_classification.py`): "downgrade" now only counts toward Credit Event when the text
+also contains explicit credit-market vocabulary (`CREDIT_MARKET_INDICATORS`: Moody's/S&P/Fitch, "credit
+rating", "bond"/"bonds", "junk status", etc.). A first attempt gated the *opposite* way (requiring explicit
+analyst words like "analyst"/"price target" to be *present* to suppress "downgrade") but a re-run of the
+full engine immediately surfaced a second real false positive it missed — **"Take-Two downgraded on murky
+game slate"**, a terse headline with no explicit analyst word at all — so the rule was inverted to the more
+conservative default: bare "downgrade" never counts unless credit-market language is present, since
+equity-analyst "downgrade" vastly outnumbers genuine credit-rating downgrades in a retail/social feed. 7
+regression tests added pinning both real cases plus the "still works for a genuine credit event" case.
+
+**A second, unrelated bug surfaced while re-verifying the regenerated headline output**: the new top
+triggered signal ("Bernstein turns bullish on VMware's valuation") was itself spuriously tagged
+Geopolitical. Tracing it back: the signal was a 5-document cluster of unrelated analyst notes ("Moody's
+warns on Harley-Davidson", "BAML warns of profit pressure for Hormel", "Jefferies warns on L Brands", etc.)
+that all got the GEOPOLITICAL macro-tag because the keyword "war" was matched as a **bare substring inside
+"warns"** (`"war" in "warns".lower()` is `True`) — the same root-cause bug (naive substring matching on a
+short keyword) existed in both `entity_linking.py`'s `MACRO_KEYWORDS` and `event_classification.py`'s
+`RULE_KEYWORDS["Geopolitical"]`. Fixed in both files by switching every keyword check to a
+`(?<!\w)...(?!\w)` word-boundary regex (same technique already used for entity aliases). 4 more regression
+tests added (2 per file: "warns" no longer spuriously tags Geopolitical, a genuine "war" mention still
+does).
+
+**Re-ran the full pipeline after both fixes**: `results/signals.jsonl` regenerated (76 signals, down from
+86 before this round), fired stress tests down to 3 (from 6). The real headline scenario is now **"US stock
+futures slip ahead of #inflation report"**, correctly classified Macroeconomic, firing the
+`fed_severely_adverse` scenario — a clean, genuinely macro-economic trigger, not an artifact of either bug.
+112/112 tests passing.
+
+## 13. Addendum (2026-10-04) — entity-linking precision with CIs, a fresh sample, and a targeted recall check
+
+**Wilson 95% CI for the originally-reported 91.7% figure**: 44/48 correct, **Wilson 95% CI [80.4%, 96.7%]**
+(computed directly — `statsmodels` isn't installed in this environment, so the closed-form Wilson
+score-interval formula was used, not approximated).
+
+**Fresh, independent sample** (not used for any rule-fixing): the original audit had already used 50 of the
+only 64 wide-universe-linked documents available in the cached corpus at the time, so there weren't 50
+genuinely unused ones to draw a second sample from. Rather than reuse the thin remainder, 600 additional
+real rows were pulled from the same MIT-licensed HF dataset (`train` split, **offset=300**, rows the
+pipeline had never touched — see `data/cache/_fresh_audit_pool.jsonl`), which produced 68 newly-linked
+documents. 50 were sampled (seed 123, distinct from the original seed 42) and hand-labelled the same way:
+**52/55 ticker matches correct = 94.5%, Wilson 95% CI [85.1%, 98.1%]**
+(`data/eval/entity_linking_audit_fresh.csv`). **Pooled across both samples: 96/103 = 93.2%, Wilson 95% CI
+[86.6%, 96.7%]**. Two further real gaps surfaced in the fresh sample (documented, not fixed, given the
+instruction to move to Phase 5 after this round): "Moody's" as a ratings-agency *source* on an unrelated
+bank-liquidity story (MCO isn't in `ANALYST_SOURCE_TICKERS`, so the source-suppression heuristic never
+runs for it), and "Wells Fargo **analyst** Dori Kesten..." (the word "analyst" itself was never in the
+`_SOURCE_INDICATORS` list, a one-line gap).
+
+**Recall spot-check**: a first attempt — sampling 80 documents where the strict linker found *no* ticker
+but a loose, unbounded substring match of any company name/alias did — turned out to be dominated almost
+entirely by noise (only 2 of 80 were genuine company mentions; the other 78 were "price target"/"Intelsat"
+("intel" substring)/"upside" ("ups" substring) false candidates), confirming genuine recall failures are
+rare in this corpus rather than giving a usable 30-headline sample. Switched to a **targeted** check instead:
+searched the full ~973-document corpus (all three real sources combined) for every bare, word-boundary
+occurrence of the four originally-excluded ambiguous aliases (Target/Visa/Apple/Oracle) and hand-labelled
+every one found, rather than a generic random sample:
+- **"target": 151 occurrences, 0/151 were genuine Target Corp mentions** (150 were the generic "price
+  target"/"stock price target" phrase, 1 was a different real company, "Target Hospitality", correctly not
+  confused with Target Corp) — excluding it cost **zero measured recall** in this entire corpus.
+- **"apple": 5 occurrences, 5/5 were genuine Apple Inc. mentions** ("Apple Shares"/iPhone production,
+  "Apple Has 40% Upside", "Apple Card", "Apple closing all China stores", "Apple saw China iPhone units
+  fall") — **100% recall loss** for the four weeks headlines actually written this way, zero offsetting
+  false-positive benefit ever found.
+- **"oracle": 1 occurrence, 1/1 genuine** ("Oracle's Need for 'Steep' Sales Climb...") — same conclusion.
+- **"visa": 0 occurrences either way** in this corpus — the exclusion is untested here, kept as a
+  precaution since there's no counter-evidence, but also no confirming evidence.
+
+**Consequence**: given this direct evidence, "apple" and "oracle" were **removed** from
+`AMBIGUOUS_BARE_ALIASES` (kept only "target" and "visa") — the recall check changed the actual shipped
+rule, not just the measurement. 2 more regression tests added confirming bare "Apple"/"Oracle" now match.
+Re-ran the full pipeline once more after this change; 112/112 tests passing.
+
 ## Net effect on scope (superseded fields updated by §8 addendum above)
 
 - News: GDELT (primary, live+replay, headline-level only — no article body) + NewsAPI (optional, live-only,
