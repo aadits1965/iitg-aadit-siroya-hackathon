@@ -9,12 +9,20 @@ import sys
 import time
 from pathlib import Path
 
+# Real headline/tweet text can contain emoji etc.; Windows' default console
+# codepage (cp1252) can't encode it and would otherwise crash this script's
+# own prints with UnicodeEncodeError on a plain `python scripts/run_engine.py`
+# run (run.py also sets PYTHONIOENCODING for its subprocess calls, but this
+# script should be safe to run standalone too).
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.ingestion.base import SourceAdapter  # noqa: E402
 from src.nlp.engine import RiskEngine  # noqa: E402
 from src.nlp.sentiment import FinBertSentimentScorer, VaderSentimentScorer  # noqa: E402
-from src.signals.store import append_signal, get_conn  # noqa: E402
+from src.signals.store import SIGNALS_DB, SIGNALS_JSONL, append_signal, get_conn  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE_DIR = ROOT / "data" / "cache"
@@ -60,6 +68,15 @@ def main():
     signals = engine.build_signals(docs)
     elapsed = time.perf_counter() - t0
     logger.info("built %d signals from %d docs in %.2fs (%.3fs/doc)", len(signals), len(docs), elapsed, elapsed / max(len(docs), 1))
+
+    # This is a full deterministic rebuild from the cache, not an incremental
+    # append -- clear any previous run's output first. append_signal() writes
+    # JSONL in append mode (by design, for a genuine live/streaming run), so
+    # without this, re-running this script (e.g. every `python run.py --mode
+    # demo`) would silently accumulate duplicate signals across runs.
+    for stale_path in (SIGNALS_JSONL, SIGNALS_DB):
+        if stale_path.exists():
+            stale_path.unlink()
 
     conn = get_conn()
     for sig in signals:

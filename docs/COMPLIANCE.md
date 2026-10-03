@@ -13,10 +13,12 @@ Ticked only when verified with evidence (file path / command output). Updated at
       `GET /signals` (FastAPI), both tested against real data.
 - [x] At least one downstream module built (Module B — Strategic Portfolio Stress Testing). Evidence:
       `scripts/run_stress_test.py` ran end-to-end against real signals, real portfolio, real market data.
-- [x] Module B: subscribes to Event Class + Impact Score (`trigger.py`, 8/89 real signals fired); synthetic
-      portfolio with loans+bonds+derivatives (50 positions, 5 asset classes); high-impact event triggers
-      stress test (impact>7 threshold, cooldown). Evidence: `results/stress_test_output.json`.
-      Dashboard visualization of before-vs-after is Phase 5, not yet built.
+- [x] Module B: subscribes to Event Class + Impact Score (`trigger.py`, 3/76 real signals fired after the
+      entity-linking/event-classification fixes); synthetic portfolio with loans+bonds+derivatives
+      (50 positions, 5 asset classes); high-impact event triggers stress test (impact>7 threshold,
+      cooldown). Evidence: `results/stress_test_output.json`.
+- [x] Dashboard shows portfolio value before vs after. Evidence: `src/dashboard/app.py` Stress Test tab,
+      verified end-to-end via `run.py --mode demo` (see PROGRESS.md Phase 5).
 
 ## Submission package
 - [ ] Public GitHub repo named `iitg-aadit-siroya-hackathon`.

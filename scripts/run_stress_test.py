@@ -19,14 +19,17 @@ scenario right where a reader would expect the real result, which was
 genuinely ambiguous. That illustrative scenario is still included, but clearly
 labelled and kept separate.
 """
-import csv
 import json
 import logging
 import sys
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from src.dashboard.data import PORTFOLIO_PATH, is_equity_data_provisional, load_latest_equity_spot  # noqa: E402
 from src.modules.stress_test.curve import load_curve  # noqa: E402
 from src.modules.stress_test.naive_approx import bond_full_vs_duration_only, option_full_vs_delta_only  # noqa: E402
 from src.modules.stress_test.portfolio import load_portfolio  # noqa: E402
@@ -38,29 +41,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parents[1]
-PORTFOLIO_PATH = ROOT / "data" / "synthetic" / "portfolio.csv"
-EQUITY_CACHE_PATH = ROOT / "data" / "cache" / "market" / "equity_prices.csv"
 OUT_PATH = ROOT / "results" / "stress_test_output.json"
-
-
-def load_latest_equity_spot() -> dict[str, float]:
-    spot: dict[str, tuple[str, float]] = {}
-    with EQUITY_CACHE_PATH.open("r", encoding="utf-8") as f:
-        for row in csv.DictReader(line for line in f if not line.startswith("#")):
-            ticker, d, px = row["ticker"], row["date"], float(row["close"])
-            if ticker not in spot or d > spot[ticker][0]:
-                spot[ticker] = (d, px)
-    return {t: px for t, (d, px) in spot.items()}
-
-
-def is_equity_data_provisional() -> bool:
-    with EQUITY_CACHE_PATH.open("r", encoding="utf-8") as f:
-        for line in f:
-            if not line.startswith("#"):
-                break
-            if line.lstrip("#").strip() == "provisional: true":
-                return True
-    return False
 
 
 def summarize(result, label: str, extra: dict | None = None) -> dict:

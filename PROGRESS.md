@@ -301,3 +301,54 @@ Status: **DONE**
    are a lower bound, not a standard-compliant figure.
 
 112/112 tests passing.
+
+## Phase 5 — Dashboard + single run command
+Status: **DONE**
+
+- **Streamlit dashboard** (`src/dashboard/app.py`, 5 tabs), every number read from a file a script already
+  wrote (`results/signals.jsonl`, `results/metrics.json`, `results/stress_test_output.json`) except the
+  Scenario Explorer tab, which says explicitly that it computes live:
+  1. **Live Signal Feed** -- filterable table (min impact, event class, source) over all real signals, plus
+     a per-signal impact-component breakdown chart.
+  2. **Engine Quality** -- macro-F1-with-CI bar chart across majority-baseline/VADER/FinBERT, FinBERT
+     per-class breakdown, event-classification gold-labelling progress bar, impact-score event-study status
+     (correctly shows "not yet run" rather than fabricating a number).
+  3. **Stress Test** -- loud provisional-data warning when applicable; the REAL highest-impact triggered
+     signal as the headline (not a manually-chosen example); MTM P&L vs credit-loss split as two separate
+     metrics; P&L by asset class and by sector; top-10 contributors; the full naive-vs-full-reprice
+     comparison charts for a real portfolio bond and option.
+  4. **Scenario Explorer** -- the one tab that computes fresh: pick an event class + sector/country, revalue
+     the real portfolio live. Verified for all 6 event classes, with and without a sector filter (correctly
+     zero-impact for entity-specific scopes with no filter, real losses with one; portfolio-wide scopes
+     ignore the filter as expected).
+  5. **Audit Log** -- every signal's trigger decision (fired or not, and why) via the real trigger engine,
+     plus the shock-config version string.
+- **`run.py`**: single entry point. `--mode demo` (default) rebuilds signals from the committed cache and
+  runs the stress test, then starts the signal API (FastAPI/uvicorn) and the dashboard. `--mode live` runs
+  `scripts/build_cache.py` first. Graceful degradation already existed per-source in the ingestion pipeline
+  (Phase 1); demo mode never touches the network beyond the one-time FinBERT weight download
+  (confirmed: 82.97s first call, 86-180ms/doc after, measured in Phase 2/3).
+- **Two real bugs found and fixed while actually running the full pipeline** (not found by unit tests,
+  which is exactly why this end-to-end run mattered):
+  1. `scripts/run_engine.py` printed real headline text containing emoji directly to a Windows console
+     defaulting to cp1252, crashing with `UnicodeEncodeError` -- and because `run.py` treated any non-zero
+     exit code as a hard pipeline failure, a cosmetic console-output issue stopped the entire demo. Fixed at
+     the root: `run.py` sets `PYTHONIOENCODING=utf-8` for every subprocess step, and `run_engine.py`/
+     `run_stress_test.py` also reconfigure their own stdout to UTF-8 so they're safe to run standalone too.
+  2. `append_signal()`'s JSONL write is intentionally append-mode (for a genuine live/streaming run), but
+     `scripts/run_engine.py` never cleared the previous run's file first -- so every `python run.py --mode
+     demo` silently accumulated duplicate signals (228 = 76 x 3 after three runs, caught directly in the
+     pipeline log). Fixed: the script now deletes `results/signals.jsonl` and `results/signals.db` before
+     writing a fresh run's output, since this script is a full deterministic rebuild, not an incremental
+     append.
+- **End-to-end verification**: real browser screenshot wasn't available in this environment (no
+  `chromium-cli`/Playwright installed, and the built-in browser tool can't reach localhost servers Claude
+  itself starts) -- verified instead by (a) running the full `run.py --mode demo` pipeline for real
+  (engine: 76 signals from 373 docs; stress test: 3/76 fired; API confirmed serving real data on `:8000`;
+  dashboard confirmed serving HTTP 200 on `:8501`), (b) executing `src/dashboard/app.py` directly in
+  Streamlit's "bare mode" to catch any Python-level exception across every tab's non-interactive code path
+  (clean exit code 0, no errors), and (c) independently exercising the Scenario Explorer's button-click
+  code path (the one branch bare mode doesn't reach) for all 6 event classes x with/without a sector
+  filter, confirming correct entity-specific-vs-portfolio-wide behaviour in every case.
+
+118/118 tests passing.

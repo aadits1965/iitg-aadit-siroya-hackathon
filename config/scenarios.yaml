@@ -1,3 +1,5 @@
+config_version: "1.1.0"  # bumped when tier definitions/mappings change; shown in the dashboard Audit Log
+
 # Shock library: event_class x severity tier -> shocks applied to the portfolio.
 #
 # SOURCED figures come from the Federal Reserve's "2025 November Proposed 2026 Stress Test
