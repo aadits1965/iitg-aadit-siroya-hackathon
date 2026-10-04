@@ -4,7 +4,7 @@
   "curve_as_of": "2026-10-02",
   "curve_source": "PROVISIONAL -- DO NOT USE IN THE DECK/README/FINAL NUMBERS UNTIL VERIFIED. | US Treasury daily par yield curve (home.treasury.gov), fetched live via Claude's WebFetch tool, which | passes page content through a SUMMARISING MODEL rather than returning raw bytes -- so although this is | real, live-fetched data (not fabricated, not from training knowledge), the specific numbers below were | transcribed by that model and have not been independently verified against the raw response bytes. | fetched_by: Claude (not scripts/build_cache.py) on 2026-10-04 because this dev sandbox's direct network | calls to treasury.gov fail outright (HTTP 000) while WebFetch reached it successfully -- see | docs/DATA_VERIFICATION.md section 9. | raw source row (as relayed by the summarising model, not independently confirmed byte-for-byte): | 10/02/2026,4.04,4.09,4.11,4.19,4.26,4.27,4.46,4.83,4.96,5.06,5.17,5.28,5.67,5.63 | REQUIRED before use in any deck/README/final number: run | `python scripts/verify_provisional_data.py` from a normal network (treasury.gov reachable directly there). | That script directly downloads the real CSV and diffs it against this file. If it matches, re-run | `python scripts/build_cache.py` to replace this file with a non-provisional, directly-fetched one and | everything downstream (results/stress_test_output.json etc.) becomes safe to use.",
   "n_signals_evaluated": 76,
-  "n_fired": 3,
+  "n_fired": 5,
   "fired_scenarios": [
     {
       "label": "REAL triggered signal: Macroeconomic (impact=7.97)",
@@ -195,6 +195,196 @@
         "source_breadth": 0.333,
         "entity_importance": 0.7,
         "novelty": 1.0
+      }
+    },
+    {
+      "label": "REAL triggered signal: Macroeconomic (impact=7.25)",
+      "event_class": "Macroeconomic",
+      "tier": "fed_severely_adverse",
+      "narrative": "Broad-based U.S. recession (the Fed's own 2026 severely-adverse design): GDP contracts and unemployment rises to 10%, triggering a flight-to-quality that pushes long Treasury yields DOWN even as credit spreads and equity volatility spike and equities sell off sharply.",
+      "scope": "portfolio_wide",
+      "total_value_before": 656917251.08,
+      "total_value_after": 643610408.05,
+      "mtm_pnl": 1789236.37,
+      "credit_loss_on_loans": 15096079.39,
+      "total_stressed_loss": -13306843.02,
+      "total_stressed_loss_pct": -2.0256,
+      "total_el_before_all_positions_memo_only": 10110091.7,
+      "total_el_after_all_positions_memo_only": 30330275.1,
+      "pnl_by_asset_class": {
+        "loan": -15096079.39,
+        "bond": -27148003.46,
+        "option": 43166805.96,
+        "swap": -4095170.13,
+        "fx_forward": -10134396.0
+      },
+      "pnl_by_sector": {
+        "Energy": 9220253.61,
+        "Consumer": -14038098.08,
+        "Industrials": 7942954.19,
+        "Healthcare": -6942860.74,
+        "Financials": -3305412.69,
+        "Real Estate": 12323197.97,
+        "Telecom": -2480998.14,
+        "Technology": -9758763.86,
+        "Sovereign": -6267115.28
+      },
+      "top_10_contributors": [
+        {
+          "position_id": "DERIV005",
+          "pnl": -5384232.0
+        },
+        {
+          "position_id": "LOAN013",
+          "pnl": -4973010.0
+        },
+        {
+          "position_id": "DERIV004",
+          "pnl": -4750164.0
+        },
+        {
+          "position_id": "LOAN001",
+          "pnl": -4621725.0
+        },
+        {
+          "position_id": "BOND012",
+          "pnl": -3627000.86
+        },
+        {
+          "position_id": "DERIV002",
+          "pnl": -3504764.41
+        },
+        {
+          "position_id": "DERIV009",
+          "pnl": -3341173.06
+        },
+        {
+          "position_id": "BOND006",
+          "pnl": -2688329.12
+        },
+        {
+          "position_id": "BOND002",
+          "pnl": -2561239.42
+        },
+        {
+          "position_id": "BOND011",
+          "pnl": -2534393.6
+        }
+      ],
+      "signal_id": "sig_bf3a0340e01aeb08",
+      "impact_score": 7.25,
+      "trigger_reason": "impact 7.25 > threshold 7.0, cooldown clear",
+      "headline_text": "\ud83d\udfe0 UPDATE US Fed Minutes Release Amid Diminished Rate-Hike Prospects Major stock indexes rose sharply, with the Nasdaq Composite hitting a new high. The 10-year Treasury yield pulled back after the U.S",
+      "sources": [
+        "mastodon"
+      ],
+      "sentiment": {
+        "score": -0.6398094743490219,
+        "label": "negative",
+        "confidence": 0.8071724772453308,
+        "model": "ProsusAI/finbert"
+      },
+      "impact_components": {
+        "sentiment_magnitude": 0.64,
+        "event_severity_prior": 0.8,
+        "source_breadth": 0.333,
+        "entity_importance": 0.7,
+        "novelty": 1.0
+      }
+    },
+    {
+      "label": "REAL triggered signal: Macroeconomic (impact=7.16)",
+      "event_class": "Macroeconomic",
+      "tier": "fed_severely_adverse",
+      "narrative": "Broad-based U.S. recession (the Fed's own 2026 severely-adverse design): GDP contracts and unemployment rises to 10%, triggering a flight-to-quality that pushes long Treasury yields DOWN even as credit spreads and equity volatility spike and equities sell off sharply.",
+      "scope": "portfolio_wide",
+      "total_value_before": 656917251.08,
+      "total_value_after": 643610408.05,
+      "mtm_pnl": 1789236.37,
+      "credit_loss_on_loans": 15096079.39,
+      "total_stressed_loss": -13306843.02,
+      "total_stressed_loss_pct": -2.0256,
+      "total_el_before_all_positions_memo_only": 10110091.7,
+      "total_el_after_all_positions_memo_only": 30330275.1,
+      "pnl_by_asset_class": {
+        "loan": -15096079.39,
+        "bond": -27148003.46,
+        "option": 43166805.96,
+        "swap": -4095170.13,
+        "fx_forward": -10134396.0
+      },
+      "pnl_by_sector": {
+        "Energy": 9220253.61,
+        "Consumer": -14038098.08,
+        "Industrials": 7942954.19,
+        "Healthcare": -6942860.74,
+        "Financials": -3305412.69,
+        "Real Estate": 12323197.97,
+        "Telecom": -2480998.14,
+        "Technology": -9758763.86,
+        "Sovereign": -6267115.28
+      },
+      "top_10_contributors": [
+        {
+          "position_id": "DERIV005",
+          "pnl": -5384232.0
+        },
+        {
+          "position_id": "LOAN013",
+          "pnl": -4973010.0
+        },
+        {
+          "position_id": "DERIV004",
+          "pnl": -4750164.0
+        },
+        {
+          "position_id": "LOAN001",
+          "pnl": -4621725.0
+        },
+        {
+          "position_id": "BOND012",
+          "pnl": -3627000.86
+        },
+        {
+          "position_id": "DERIV002",
+          "pnl": -3504764.41
+        },
+        {
+          "position_id": "DERIV009",
+          "pnl": -3341173.06
+        },
+        {
+          "position_id": "BOND006",
+          "pnl": -2688329.12
+        },
+        {
+          "position_id": "BOND002",
+          "pnl": -2561239.42
+        },
+        {
+          "position_id": "BOND011",
+          "pnl": -2534393.6
+        }
+      ],
+      "signal_id": "sig_86eecd7b084f59f8",
+      "impact_score": 7.16,
+      "trigger_reason": "impact 7.16 > threshold 7.0, cooldown clear",
+      "headline_text": "$LOW - Lowe's racks up another positive rating despite recession risk https://t.co/ekx4f6aqIK",
+      "sources": [
+        "twitter_replay"
+      ],
+      "sentiment": {
+        "score": 0.9162021335214376,
+        "label": "positive",
+        "confidence": 0.9439789056777954,
+        "model": "ProsusAI/finbert"
+      },
+      "impact_components": {
+        "sentiment_magnitude": 0.916,
+        "event_severity_prior": 0.8,
+        "source_breadth": 0.333,
+        "entity_importance": 0.7,
+        "novelty": 0.2
       }
     },
     {

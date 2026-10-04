@@ -78,6 +78,23 @@ def _contains(text: str, phrase: str) -> bool:
     return _KEYWORD_PATTERNS[phrase].search(text) is not None
 
 
+# FROZEN at this version for scoring against data/eval/event_gold.csv once Aadit
+# finishes labelling it (see docs/USER_TODO.md). The rule classifier is what
+# ships as the production classifier (src/nlp/engine.py's default) -- it is
+# fast, transparent, zero extra model cost, and has already been debugged
+# against real signal output (the analyst-vs-credit-event and "war"/"warns"
+# fixes, see docs/DATA_VERIFICATION.md section 12). Zero-shot NLI remains
+# implemented and available as a comparison method for Phase 3 evaluation, but
+# is not the production classifier. Any future change to RULE_KEYWORDS,
+# CREDIT_MARKET_INDICATORS, or the classify() logic is a NEW version
+# ("rule-v2"...) with its own frozen tag -- it must never be tuned or
+# re-scored against the same gold set rule-v1 was evaluated on (that would be
+# exactly the kind of eval-set tuning this project's own rules forbid, see
+# docs/ASSUMPTIONS.md's "no metric is ever tuned on an eval split"). Tagged in
+# git as `classifier-v1` at the commit that introduces this constant.
+RULE_CLASSIFIER_VERSION = "rule-v1"
+
+
 @dataclass
 class EventResult:
     event_class: str
@@ -87,6 +104,7 @@ class EventResult:
 
 class RuleBasedEventClassifier:
     method = "rule"
+    version = RULE_CLASSIFIER_VERSION
 
     def classify(self, text: str) -> EventResult:
         has_credit_market_language = any(_contains(text, ind) for ind in CREDIT_MARKET_INDICATORS)
@@ -119,6 +137,7 @@ def _load_zero_shot_pipeline():
 class ZeroShotEventClassifier:
     method = "zero_shot"
     model_name = ZERO_SHOT_MODEL_NAME
+    version = ZERO_SHOT_MODEL_NAME  # the model checkpoint name IS the version for a pretrained-only method
 
     def classify(self, text: str) -> EventResult:
         clf = _load_zero_shot_pipeline()

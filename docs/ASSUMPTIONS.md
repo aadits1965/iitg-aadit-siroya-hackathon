@@ -3,6 +3,23 @@
 Every modelling/design assumption goes here with its justification and source (or "illustrative assumption,
 no source"). Updated throughout the build, not just once.
 
+## Event classifier: frozen at rule-v1
+
+The **rule-based classifier** (`RuleBasedEventClassifier`, `src/nlp/event_classification.py`) is the one
+that ships as the production classifier (`src/nlp/engine.py`'s default) -- fast, transparent, zero extra
+model cost, and already debugged against real signal output (the analyst-vs-credit-event and "war"/"warns"
+fixes in docs/DATA_VERIFICATION.md section 12). The zero-shot NLI classifier remains implemented and
+available as a comparison method for Phase 3 evaluation, but is **not** the production classifier.
+
+**Frozen as `RULE_CLASSIFIER_VERSION = "rule-v1"`, git tag `classifier-v1`.** Once Aadit finishes hand-
+labelling `data/eval/event_gold.csv`, `scripts/score_event_classifier.py` scores this exact frozen version
+once and the result is recorded in `results/metrics.json` tagged `rule-v1`. **Any later change to
+`RULE_KEYWORDS`, `CREDIT_MARKET_INDICATORS`, or the classify() logic is a new version** (`rule-v2`, its own
+git tag) and must never be tuned or re-scored against the same gold set `rule-v1` was evaluated on --
+that would be exactly the eval-set-tuning this project's own rules forbid (see the no-tuning-on-eval-split
+rule below). A `rule-v2` needs either a fresh gold sample or an explicitly train/test-split portion of the
+existing one, decided before looking at v2's results on it.
+
 ## Methodology discipline
 
 - **No metric, threshold, label mapping, or weight is ever tuned on an evaluation/validation split.**

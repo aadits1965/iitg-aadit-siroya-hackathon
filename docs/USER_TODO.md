@@ -49,13 +49,31 @@ in the deck as-is, don't re-run hoping for a better number.**
 ```bash
 python scripts/sample_event_gold.py      # re-run now that GDELT data exists -- much better class coverage
 python scripts/label_events.py           # interactive, saves after every row, safe to stop and resume
+python scripts/score_event_classifier.py # scores the FROZEN rule-v1 classifier (git tag classifier-v1) once
 ```
 
 Don't label the current committed `data/eval/event_gold.csv` (200 rows, but Mastodon/Twitter-only, zero
 "Product Launch" examples) — regenerate it first so your labelling time goes toward a sample that actually
-covers all six event classes.
+covers all six event classes. **`score_event_classifier.py` scores the classifier exactly as it is tagged
+`classifier-v1` right now** — do not edit `RULE_KEYWORDS`/`CREDIT_MARKET_INDICATORS` based on what it
+reports and re-run it; that would be tuning on the eval set. If the frozen rules turn out to score poorly,
+that's a real, reportable finding (put it on the Limitations slide) — a genuine improvement is a new
+`rule-v2`, scored on a different/fresh sample, not this one.
 
-## 4. Everything else
+## 4. Demo story: no real Geopolitical trigger exists yet in the cached data
+
+**Checked directly** (`results/signals.jsonl`, current cache): exactly **1** Geopolitical-classified signal
+exists in the whole 76-signal cached corpus, at impact **6.35** — below the 7.0 trigger threshold. **There
+is currently no real, non-manual signal that is both Geopolitical and impact > 7**, so Module B's
+`geopolitical_rate_shock` tier (the brief's own "equities -10%, rates +200bp" example) has never actually
+fired from real data in this environment. If the demo/pitch wants to show that specific scenario, use the
+dashboard's **Scenario Explorer** tab (manually pick "Geopolitical") — it is already labelled in the UI as
+computing live rather than reading a real trigger, and the deck must say the same if it shows this scenario
+(**"manual scenario" labelled visibly, never presented as a real triggered signal**). **Re-check this after
+your local GDELT cache-build run** (step 1 above) — the wider, real GDELT news pull may well surface a
+genuine high-impact Geopolitical headline that the current Mastodon/Twitter-only cache doesn't have.
+
+## 5. Everything else
 
 - [ ] **Confirm with organisers:** the guidelines doc says demo video = "10 mins screen recording" but the
       platform's Required Deliverables says live demo "not to exceed 5 minutes". This build targets **<=5:00**

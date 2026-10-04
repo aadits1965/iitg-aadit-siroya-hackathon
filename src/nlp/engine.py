@@ -17,7 +17,7 @@ from src.nlp.entity_linking import EntityLinker, EntityMatch
 from src.nlp.event_classification import EventResult, RuleBasedEventClassifier
 from src.nlp.impact_score import ImpactScorer
 from src.nlp.sentiment import SentimentResult
-from src.signals.schema import EventBlock, ImpactBlock, Signal, SentimentBlock, make_signal_id, now_utc
+from src.signals.schema import EventBlock, ImpactBlock, Signal, SentimentBlock, make_signal_id
 
 CLUSTER_WINDOW = timedelta(hours=6)
 COOLDOWN = timedelta(hours=6)
@@ -108,7 +108,14 @@ class RiskEngine:
 
         return Signal(
             signal_id=make_signal_id(doc_ids),
-            created_at_utc=now_utc(),
+            # Derived from the cluster's own latest document timestamp, NOT
+            # wall-clock now() -- a signal's time should reflect when its
+            # underlying evidence was published, not when a particular batch
+            # job happened to run. This also makes demo mode deterministic:
+            # the same cached docs always produce byte-identical signals.jsonl
+            # across runs (see tests/test_demo_idempotency.py), which calling
+            # now() here would make impossible by construction.
+            created_at_utc=latest.doc.published_at_utc,
             doc_ids=doc_ids,
             sources=sources,
             tickers=tickers,
@@ -121,6 +128,7 @@ class RiskEngine:
             model_versions={
                 "sentiment_model": sentiment.model,
                 "event_method": latest.event.method,
+                "event_classifier_version": getattr(self.event_classifier, "version", "unknown"),
             },
             text_preview=(latest.doc.title or latest.doc.text)[:200],
         )
