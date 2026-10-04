@@ -460,3 +460,34 @@ pipeline output + README/deck -> PDF export + screenshots -> re-run the complian
 check.
 
 124/124 fast tests passing (1 opt-in slow test skipped by default, verified manually for this round).
+
+## Phase 10 — Demo script + Q&A prep
+Status: **DONE**
+
+1. **`docs/DEMO_SCRIPT.md`**: full timestamped shot list using the real current pipeline numbers (76
+   signals, FinBERT 0.660 macro-F1 vs VADER 0.453 vs majority 0.267, bearish recall 76.5% vs 53%, the real
+   triggered Macroeconomic/Fed-severely-adverse scenario moving portfolio value from $656,917,251 to
+   $643,610,408). Budgeted to **4:15 with a 45s buffer**, under the 5:00 limit. Covers setup/run
+   (`python run.py --mode demo`, no recompute, starts in well under 30s per Phase-10-pre-review item 3),
+   all 5 dashboard tabs, and an explicit "Before recording" checklist telling Aadit to re-check these
+   numbers against the dashboard on screen if the pipeline is regenerated first (per `docs/USER_TODO.md`
+   steps 1-5).
+2. **`docs/QA_PREP.md`**: 25 hostile-judge questions with honest answers, covering both the brief's
+   suggested red-team angles (Impact Score validity, sentiment-eval leakage, shock-size sourcing,
+   correlation vs causation, duplicate/syndicated news, production failure modes, synthetic portfolio
+   justification, polling vs Kafka, rating-surveillance fit) and every real issue surfaced during this
+   build specifically: the entity-linking precision bug and its Wilson-CI-measured fix, the Disney
+   downgrade and "warns"/"war" classifier bugs, the classifier freeze rationale, PROVISIONAL vs sourced
+   data, demo determinism, the MTM/credit-loss accounting split, EL vs IFRS9 lifetime-ECL caveat,
+   sector-contagion assumption, instantaneous-vs-phased shock simplification, the naive-vs-full-reprice
+   convexity result, and the manual-scenario labeling. Answers point at exact files/scripts/numbers rather
+   than asserting conclusions.
+
+**Fast test suite re-run for this round**: `rapidfuzz` (declared in `requirements.txt`, used by
+`src/ingestion/dedup.py`) was missing from this dev-sandbox Python environment at the start of this round
+-- a repeat of the sandbox's previously-documented inconsistent-install behavior, not a code regression.
+Reinstalled it (`pip install rapidfuzz==3.10.1`) and re-ran: **130 passed, 2 skipped, 10.39s.**
+
+Per the user's exact wording for this round ("Then do Phase 10...") -- no "continue without pausing"
+clause was given this time, unlike prior rounds -- Phase 11 (final compliance audit + clean-clone re-check)
+is **not** being started automatically; reporting back here first.
