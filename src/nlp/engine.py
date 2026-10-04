@@ -9,7 +9,7 @@ cooldown/dedup — only make sense at the story level, not the single-article le
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import timedelta
 
 from src.ingestion.schema import Document

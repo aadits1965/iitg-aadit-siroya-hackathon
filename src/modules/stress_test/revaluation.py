@@ -99,7 +99,6 @@ def value_position_shocked(pos: Position, curve: YieldCurve, equity_spot: dict[s
         return PositionValuation(position=pos, value=value, expected_loss=el)
 
     shocked_curve = curve.shocked(parallel_bp=shock.rate_parallel_bp)
-    shocked_spot = {k: v * (1 + shock.equity_pct_move) for k, v in equity_spot.items()}
     base_spread_bp = RATING_BASE_SPREAD_BP.get(pos.rating, RATING_BASE_SPREAD_BP["BBB"])
     spread_bump = shock.credit_spread_bump_bp(pos.rating)
 

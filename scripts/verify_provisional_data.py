@@ -60,8 +60,8 @@ def main():
     if mismatches:
         print("MISMATCH found in Treasury curve:")
         print("\n".join(mismatches))
-        print(f"\nNote: a mismatch may simply mean the date has moved on (markets are open daily) -- "
-              f"compare the '# as_of:' date in both files before concluding it's a transcription error.")
+        print("\nNote: a mismatch may simply mean the date has moved on (markets are open daily) -- "
+              "compare the '# as_of:' date in both files before concluding it's a transcription error.")
     else:
         print(f"MATCH: all {len(provisional_rates)} maturities agree within {TOLERANCE*10000:.0f}bp.")
 

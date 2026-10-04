@@ -83,11 +83,11 @@ def main():
         append_signal(sig, conn=conn)
     conn.close()
 
-    print(f"\n=== Engine run summary ===")
+    print("\n=== Engine run summary ===")
     print(f"docs processed:   {len(docs)}")
     print(f"signals produced: {len(signals)}")
     print(f"latency:          {elapsed:.2f}s total, {elapsed/max(len(docs),1)*1000:.1f}ms/doc")
-    print(f"written to:       results/signals.jsonl, results/signals.db")
+    print("written to:       results/signals.jsonl, results/signals.db")
     high_impact = [s for s in signals if s.impact.score > 7]
     print(f"high-impact (>7): {len(high_impact)}")
     for s in sorted(signals, key=lambda s: -s.impact.score)[:5]:

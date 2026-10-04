@@ -2,7 +2,6 @@
 live (network) modes and yields normalised Document objects."""
 from __future__ import annotations
 
-import json
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Iterator

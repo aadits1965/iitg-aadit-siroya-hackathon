@@ -4,7 +4,7 @@ flagging below MIN_SAMPLE_FOR_POWER, since a real large-n run needs the GDELT
 cache (blocked in this dev sandbox -- see docs/DATA_VERIFICATION.md)."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import pandas as pd
 import pytest

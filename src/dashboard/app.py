@@ -17,14 +17,13 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.dashboard.data import (  # noqa: E402
-    is_equity_data_provisional,
     load_latest_equity_spot,
     load_metrics,
     load_scenario_config,
     load_signals,
     load_stress_output,
 )
-from src.dashboard.palette import CATEGORICAL, EVENT_CLASS_COLORS, STATUS  # noqa: E402
+from src.dashboard.palette import CATEGORICAL  # noqa: E402
 from src.modules.stress_test.curve import MissingCurveCacheError, load_curve  # noqa: E402
 from src.modules.stress_test.portfolio import load_portfolio  # noqa: E402
 from src.modules.stress_test.revaluation import revalue_portfolio  # noqa: E402

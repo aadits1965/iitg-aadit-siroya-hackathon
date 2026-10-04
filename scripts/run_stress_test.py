@@ -196,7 +196,7 @@ def main():
 
     if headline:
         d, result, entry = headline
-        print(f"=== HEADLINE (real triggered signal, highest impact) ===")
+        print("=== HEADLINE (real triggered signal, highest impact) ===")
         print(f"Signal: {d.signal_id} | impact={d.impact_score} | event_class={d.event_class}")
         print(f"Headline text: {entry['headline_text']}")
         print(f"Scenario: {result.shock.tier_name} ({result.shock.scope}) -- {result.shock.narrative}")
@@ -210,7 +210,7 @@ def main():
     else:
         print("No signal fired a stress test in this run.")
 
-    print(f"\n=== Illustrative example (NOT a real trigger) ===")
+    print("\n=== Illustrative example (NOT a real trigger) ===")
     print(f"  Total stressed loss: ${example_result.total_stressed_loss:,.0f} "
           f"({example_result.total_stressed_loss/example_result.total_value_before*100:.2f}%)")
 
