@@ -491,3 +491,87 @@ Reinstalled it (`pip install rapidfuzz==3.10.1`) and re-ran: **130 passed, 2 ski
 Per the user's exact wording for this round ("Then do Phase 10...") -- no "continue without pausing"
 clause was given this time, unlike prior rounds -- Phase 11 (final compliance audit + clean-clone re-check)
 is **not** being started automatically; reporting back here first.
+
+## Before-Phase-11 review round
+
+Status report on each item from the prior round, re-verified against the current code (not recalled from
+memory):
+
+(a) **`docs/presentation.pdf` as an audit failure condition**: confirmed in `scripts/audit_compliance.py`
+    `REQUIRED_FILES` -- re-ran it, correctly fails with exactly `MISSING required file:
+    docs/presentation.pdf`.
+(b) **Pending-metric handling**: confirmed `results/metrics.json` currently has only `sentiment_eval` --
+    `event_classification_eval` and `impact_score_event_study` are both absent (pending). Both
+    `format_event_classification_status()` / `format_impact_event_study_status()` are wired into both
+    `generate_readme.py` and `generate_deck.py` (slide 7), so neither generator silently omits them.
+(c) **Demo default load + measured startup + test**: confirmed `run.py`'s `should_recompute()` defaults
+    to loading committed `results/` (no recompute) unless `--recompute`/`--mode live`; `tests/test_run_startup.py`
+    exists; ~310ms measured startup documented in `run.py`'s docstring.
+(d) **"Manual scenario" label**: confirmed present verbatim in the dashboard (4 call sites in
+    `src/dashboard/app.py`) and in `scripts/run_stress_test.py`'s label. **Found one real inconsistency
+    while verifying**: `scripts/generate_deck_charts.py`'s chart title used different wording ("MANUAL
+    SCENARIO, not a real trigger") instead of the exact requested phrase. Fixed to "Manual scenario, not
+    triggered by a real signal" and regenerated the chart to confirm no errors (current real data has
+    `n_fired=5`, so this branch isn't hit by the currently-committed chart image, but the code path is now
+    correct for whenever it is).
+(e) **Screenshot slots**: confirmed `SCREENS_DIR`/`SLOT_SCREEN_FALLBACKS`/`resolve_slide5_images()` in
+    `generate_deck.py`, and the exact 3-file list in `docs/USER_TODO.md` step 6.
+(f) **Clean-clone + fresh-venv result**: **not re-run this round** -- the only result on record is the one
+    already reported in the "Changes requested before Phase 10" section above (1334s install, 120
+    passed/1 skipped/56s), against an earlier commit, explicitly not treated as a pass for the current
+    HEAD. No newer clean-clone directory exists. This stays open for the real Phase 11, after Aadit's
+    local data refresh, per the user's own instruction this round.
+
+**Also found and fixed this round**: `docs/COMPLIANCE.md`'s "Problem brief" section cited stale numbers
+(89 signals, "3/76 fired") left over from an earlier pipeline run, inconsistent with the actual current
+`results/signals.jsonl` (76 signals) and `results/stress_test_output.json` (`n_fired: 5`). Corrected both
+lines with a note that these numbers move whenever the cache/engine is re-run.
+
+**Requirements-vs-imports check (requested this round)**: new `scripts/check_requirements.py` walks every
+`.py` file under `src/` and `scripts/`, extracts top-level imports via `ast`, excludes stdlib + first-party
+modules, maps known import/package-name mismatches (`yaml`->pyyaml, `dotenv`->python-dotenv,
+`PIL`->Pillow, `sklearn`->scikit-learn, `pptx`->python-pptx), and fails if anything used has no matching
+`requirements.txt` entry. Caught one false positive during development (`generate_readme` import flagged
+as a missing package -- it's a sibling script import, not PyPI; fixed by also excluding local module/file
+stems under `src/`/`scripts/`). Wired into `scripts/audit_compliance.py` as a new check
+("All imports pinned in requirements.txt") and covered by `tests/test_check_requirements.py` (4 tests: one
+real assertion against the actual repo state, three proving the detector itself would catch a real gap
+rather than always passing). Currently passes clean -- every import, including `rapidfuzz`, is pinned.
+Full suite: **134 passed, 2 skipped**.
+
+## Phase 11 — DRY RUN (not final)
+
+Walked `docs/COMPLIANCE.md` line by line. This is explicitly a dry run per the user's instruction --
+nothing below is being marked final, and the real Phase 11 (including a second clean-clone check and
+re-verifying `DEMO_SCRIPT.md`'s numbers against regenerated results) runs after Aadit's local data refresh.
+
+**Passing / evidenced now:**
+- All 6 "Problem brief" items — real evidence, numbers just corrected to match current data (see above).
+- Repo structure, README template compliance, 7-slide deck, DEMO_SCRIPT.md, QA_PREP.md — all present with
+  evidence already logged above and in prior phases.
+- "All data (incl. synthetic) in /data with sources+assumptions" — substantially done: `README.md`
+  section 3 documents every text/market data source with licence + provisional/sourced status, and
+  `docs/ASSUMPTIONS.md` documents the synthetic portfolio's construction (PD/LGD, EL horizon,
+  sector-contagion mapping). Minor gap: the synthetic portfolio itself isn't a row in the README's
+  Dataset Used table (that table is scoped to text/market data sources) -- cosmetic, not a missing
+  disclosure, since the same facts are documented in ASSUMPTIONS.md.
+
+**Failing / pending now (expected, not a regression):**
+- `docs/presentation.pdf` missing -- `scripts/audit_compliance.py` fails on exactly this, by design.
+- Public GitHub repo -- not yet pushed; Aadit's action.
+- Demo video -- script ready, recording is Aadit's action.
+- Clean clone re-check -- not re-run since an earlier commit; explicitly deferred to the real Phase 11.
+- "Ready for live jury pitch + Q&A" -- Q&A content is ready; overall readiness still gated on the three
+  items above.
+
+**Gap list for Aadit (everything that needs manual/local action, consolidated):**
+1. Run the full local pipeline refresh (`docs/USER_TODO.md` steps 1-5) -- real GDELT data, gold-set
+   labelling, event study.
+2. Export `docs/presentation.pptx` to `docs/presentation.pdf` and commit it.
+3. Capture the 3 dashboard screenshots into `docs/screens/`, re-run `generate_deck.py`.
+4. Re-run `scripts/audit_compliance.py` -- expect a clean pass once 2-3 are done.
+5. Re-run the clean-clone + fresh-venv check against the final commit (not the earlier one already on
+   record).
+6. Re-verify `docs/DEMO_SCRIPT.md`'s spoken numbers against whatever `results/` looks like after step 1,
+   before recording.
+7. Push to GitHub, make public, record + upload the demo video, then do the real (non-dry-run) Phase 11.

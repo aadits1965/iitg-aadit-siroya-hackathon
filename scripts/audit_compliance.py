@@ -15,6 +15,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from check_requirements import check_imports_against_requirements  # noqa: E402
 
 REQUIRED_FILES = [
     "README.md",
@@ -63,12 +66,18 @@ def check_no_secrets_committed() -> list[str]:
     return failures
 
 
+def check_requirements_pinned() -> list[str]:
+    missing = check_imports_against_requirements()
+    return [f"import {name!r} used in src/ or scripts/ but not pinned in requirements.txt" for name in missing]
+
+
 def main():
     all_failures = []
     checks = [
         ("Required files present", check_required_files),
         ("No oversized files", check_file_sizes),
         ("No secrets committed", check_no_secrets_committed),
+        ("All imports pinned in requirements.txt", check_requirements_pinned),
         ("Test suite passes", check_tests_pass),
     ]
 
