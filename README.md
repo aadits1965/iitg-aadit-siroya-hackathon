@@ -104,6 +104,10 @@ Highest-impact real trigger: *US stock futures slip ahead of #inflation report -
 
 **Why it matters:** a risk/ratings team reading thousands of headlines a day cannot manually translate each one into a portfolio impact. This pipeline shows that translation happening end to end -- from raw text to a dollar P&L number, with the mark-to-market and credit-loss channels kept separate so neither number silently double-counts the other.
 
+**Two evaluations from the original brief, status as of this generation:**
+- Event classification accuracy: **pending** -- needs `data/eval/event_gold.csv` fully hand-labelled, then `scripts/score_event_classifier.py` (scores the frozen `rule-v1`, git tag `classifier-v1`).
+- Impact Score event-study correlation: **pending** -- needs a real GDELT sample (this dev sandbox cannot reach GDELT; see `docs/DATA_VERIFICATION.md` section 8). Run `scripts/run_impact_event_study.py` after `scripts/build_cache.py`.
+
 ## Limitations & Next Steps
 
 - **Impact Score validation is incomplete in this environment.** GDELT is unreachable from the dev sandbox

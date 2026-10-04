@@ -55,7 +55,8 @@ def stress_test_chart(stress: dict) -> Path:
     ax.set_ylabel("P&L ($)", fontsize=10)
     ax.spines[["top", "right"]].set_visible(False)
     is_real = "signal_id" in headline
-    title = "P&L by asset class — real triggered signal" if is_real else "P&L by asset class — illustrative scenario"
+    title = ("P&L by asset class — real triggered signal" if is_real
+              else "P&L by asset class — MANUAL SCENARIO, not a real trigger")
     ax.set_title(title, fontsize=11, weight="bold")
     ax.ticklabel_format(style="plain", axis="y")
     for i, (k, v) in enumerate(pnl.items()):

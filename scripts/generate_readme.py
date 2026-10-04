@@ -7,10 +7,17 @@ to catch: it means a number this script was about to print doesn't actually
 exist yet, and printing it anyway would be exactly the kind of placeholder/
 fabricated number this project's own rules forbid.
 
-Metrics this script does NOT try to show (event-classification accuracy,
-impact-score correlation) are intentionally left to the template's
-Limitations section as honest prose ("pending"), not pulled as numbers here --
-there is no guard needed for a number the script never claims to source.
+Two metrics are allowed to be genuinely absent right now (pending Aadit's
+local GDELT/labelling runs -- see docs/USER_TODO.md):
+  - event_classification_eval (needs data/eval/event_gold.csv fully labelled)
+  - impact_score_event_study (needs a real GDELT sample, n>=200 for power)
+format_event_classification_status()/format_impact_event_study_status() below
+handle both: if the metric exists in results/metrics.json, its real result is
+shown in Key Results (including an explicit "no significant relationship"
+statement if that's what the data shows, or an "UNDERPOWERED" flag if n<200 --
+never a bare number presented as more conclusive than it is); if absent, Key
+Results states plainly that it's pending, rather than silently omitting any
+mention of it.
 """
 import json
 import sys
@@ -44,6 +51,45 @@ def fmt_ci(ci: list) -> str:
 
 def fmt_ci_pct(ci: list) -> str:
     return f"[{ci[0]:.1%}, {ci[1]:.1%}]"
+
+
+def format_event_classification_status(metrics: dict) -> str:
+    ece = metrics.get("event_classification_eval")
+    if not ece:
+        return ("Event classification accuracy: **pending** -- needs `data/eval/event_gold.csv` fully "
+                "hand-labelled, then `scripts/score_event_classifier.py` (scores the frozen `rule-v1`, "
+                "git tag `classifier-v1`).")
+    acc = ece["accuracy"]
+    f1 = ece["macro_avg"]["f1-score"]
+    n = ece["n_gold_examples"]
+    version = ece.get("classifier_version", "rule-v1")
+    return (f"Event classification (`{version}`, frozen before scoring): accuracy={acc:.1%}, "
+            f"macro-F1={f1:.3f} (n={n} hand-labelled examples).")
+
+
+def format_impact_event_study_status(metrics: dict) -> str:
+    ies = metrics.get("impact_score_event_study")
+    if not ies:
+        return ("Impact Score event-study correlation: **pending** -- needs a real GDELT sample "
+                "(this dev sandbox cannot reach GDELT; see `docs/DATA_VERIFICATION.md` section 8). "
+                "Run `scripts/run_impact_event_study.py` after `scripts/build_cache.py`.")
+    n = ies["n_resolved"]
+    r = ies.get("spearman_r")
+    if r is None:
+        return f"Impact Score event-study correlation: n={n} resolved events -- too few to compute a correlation at all."
+    ci = ies.get("ci95")
+    ci_str = f" 95% CI [{ci[0]:.3f}, {ci[1]:.3f}]" if ci else ""
+    if not ies.get("power_adequate", False):
+        return (f"Impact Score event-study correlation: n={n} (**UNDERPOWERED**, below the n>=200 threshold "
+                f"for reliable detection) -- Spearman r={r:.3f}{ci_str}. At this sample size, **no significant "
+                f"relationship can be claimed either way** -- the CI is too wide to distinguish a real "
+                f"correlation from noise.")
+    p = ies.get("spearman_p")
+    is_significant = p is not None and p < 0.05
+    verdict = "a statistically significant" if is_significant else "**no statistically significant**"
+    return (f"Impact Score event-study correlation: n={n}, Spearman r={r:.3f}{ci_str}"
+            f"{f', p={p:.3f}' if p is not None else ''} -- {verdict} relationship between Impact Score and "
+            f"realised abnormal returns. Association only, not causation.")
 
 
 def main():
@@ -135,6 +181,10 @@ def main():
                  "manually translate each one into a portfolio impact. This pipeline shows that translation "
                  "happening end to end -- from raw text to a dollar P&L number, with the mark-to-market and "
                  "credit-loss channels kept separate so neither number silently double-counts the other.")
+
+    lines.append("\n**Two evaluations from the original brief, status as of this generation:**")
+    lines.append(f"- {format_event_classification_status(metrics)}")
+    lines.append(f"- {format_impact_event_study_status(metrics)}")
 
     key_results_section = "\n".join(lines)
 

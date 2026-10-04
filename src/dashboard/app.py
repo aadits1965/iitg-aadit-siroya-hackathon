@@ -221,13 +221,15 @@ with tab_stress:
 
         headline = out.get("headline_scenario")
         if not headline:
-            st.info("No real signal has fired a stress test yet (none exceeded the impact threshold). "
-                     "Showing the illustrative example below instead.")
+            st.warning("**Manual scenario — not triggered by a real signal.** No real signal has fired a "
+                       "stress test yet (none exceeded the impact threshold). Showing a manually-constructed "
+                       "scenario below instead.")
             headline = out.get("illustrative_example_NOT_from_a_real_trigger")
 
         if headline:
             is_real = "signal_id" in headline
-            st.subheader(("✅ Real triggered signal" if is_real else "🔵 Illustrative example (not a real trigger)"))
+            st.subheader("✅ Real triggered signal" if is_real
+                         else "🔶 Manual scenario — not triggered by a real signal")
             if is_real:
                 st.markdown(f"**Headline:** {headline.get('headline_text', '—')}")
                 st.caption(f"Signal `{headline['signal_id']}` · impact={headline['impact_score']} · "
@@ -304,9 +306,10 @@ with tab_stress:
 # Tab 4: Scenario Explorer (the one tab that computes live, not from a file)
 # ---------------------------------------------------------------------------
 with tab_explorer:
-    st.info("This tab computes a fresh revaluation live (unlike every other tab, which only reads "
-            "files already written by a script) — useful for live Q&A ('what if this were a Credit "
-            "Event on the Energy sector instead?').")
+    st.warning("🔶 **Manual scenario — not triggered by a real signal.** This tab computes a fresh "
+               "revaluation live (unlike every other tab, which only reads files already written by a "
+               "script) — useful for live Q&A ('what if this were a Credit Event on the Energy sector "
+               "instead?'), but every result shown here is a manually-chosen what-if, never a real trigger.")
 
     try:
         curve = load_curve()
@@ -328,6 +331,7 @@ with tab_explorer:
             shock = build_shock_set(chosen_class, sectors=chosen_sectors, countries=chosen_countries)
             result = revalue_portfolio(portfolio, curve, equity_spot, shock)
 
+            st.markdown("**🔶 Manual scenario — not triggered by a real signal**")
             st.markdown(f"**Scenario:** `{shock.tier_name}` ({shock.scope}) — {shock.narrative}")
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Value before", f"${result.total_value_before:,.0f}")

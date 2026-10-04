@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from generate_readme import require  # noqa: E402
+from generate_readme import format_event_classification_status, format_impact_event_study_status, require  # noqa: E402
 
 from pptx import Presentation  # noqa: E402
 from pptx.util import Inches, Pt  # noqa: E402
@@ -23,7 +23,29 @@ METRICS_PATH = ROOT / "results" / "metrics.json"
 STRESS_PATH = ROOT / "results" / "stress_test_output.json"
 ARCH_PATH = ROOT / "docs" / "architecture.png"
 ASSETS_DIR = ROOT / "docs" / "deck_assets"
+SCREENS_DIR = ROOT / "docs" / "screens"
 OUT_PATH = ROOT / "docs" / "presentation.pptx"
+
+# Slide 5 prefers a REAL dashboard screenshot (Aadit captures these locally --
+# see docs/USER_TODO.md for the exact list and filenames) over the generated
+# chart, per-slot, falling back to the chart only where a screenshot isn't
+# present yet. No code change needed once screenshots are added -- just
+# re-run this script.
+SLOT_SCREEN_FALLBACKS = [
+    (SCREENS_DIR / "live_signal_feed.png", ASSETS_DIR / "sentiment_chart.png"),
+    (SCREENS_DIR / "stress_test.png", ASSETS_DIR / "stress_test_chart.png"),
+    (SCREENS_DIR / "scenario_explorer.png", ASSETS_DIR / "naive_vs_full_chart.png"),
+]
+
+
+def resolve_slide5_images() -> list[Path]:
+    resolved = []
+    for screen_path, fallback_path in SLOT_SCREEN_FALLBACKS:
+        chosen = screen_path if screen_path.exists() else fallback_path
+        print(f"  slide 5 slot: {'REAL screenshot' if chosen == screen_path else 'generated chart (fallback)'} "
+              f"-- {chosen.relative_to(ROOT)}")
+        resolved.append(chosen)
+    return resolved
 
 INK = RGBColor(0x0B, 0x0B, 0x0B)
 MUTED = RGBColor(0x52, 0x51, 0x4E)
@@ -155,9 +177,10 @@ def main():
 
     # Slide 5: Key Results
     s5 = add_content_slide(prs, "Key Results")
-    s5.shapes.add_picture(str(ASSETS_DIR / "sentiment_chart.png"), Inches(0.3), Inches(1.15), width=Inches(4.1))
-    s5.shapes.add_picture(str(ASSETS_DIR / "stress_test_chart.png"), Inches(4.55), Inches(1.15), width=Inches(4.1))
-    s5.shapes.add_picture(str(ASSETS_DIR / "naive_vs_full_chart.png"), Inches(8.8), Inches(1.15), width=Inches(4.1))
+    print("Resolving slide 5 images (real screenshot if available, else generated chart):")
+    slide5_images = resolve_slide5_images()
+    for img_path, left in zip(slide5_images, (0.3, 4.55, 8.8)):
+        s5.shapes.add_picture(str(img_path), Inches(left), Inches(1.15), width=Inches(4.1))
     results_text = (
         f"FinBERT {finbert_f1:.3f} macro-F1 [{finbert_f1_ci[0]:.3f}, {finbert_f1_ci[1]:.3f}] vs VADER {vader_f1:.3f} "
         f"vs majority-class {majority_f1:.3f} (n=2000, CIs don't overlap — real improvement). "
@@ -169,7 +192,9 @@ def main():
     if data_provisional:
         results_text += "  ⚠ Market data (curve/equity spot) is PROVISIONAL this run — see docs/USER_TODO.md."
     if headline is None:
-        results_text += "  (No real signal has fired a stress test as of this generation; chart shows the illustrative scenario, labelled as such.)"
+        results_text += ("  ⚠ MANUAL SCENARIO — NOT TRIGGERED BY A REAL SIGNAL: no real signal has "
+                          "fired a stress test as of this generation; the chart shows a manually-constructed "
+                          "scenario instead, labelled as such.")
     tb = s5.shapes.add_textbox(Inches(0.3), Inches(5.3), Inches(12.6), Inches(1.9))
     tf = tb.text_frame
     tf.word_wrap = True
@@ -191,13 +216,15 @@ def main():
          "are exactly the surface a ratings/risk-analytics business operates on.", 0),
     ], font_size=17)
 
-    # Slide 7: Limitations & Next Steps
+    # Slide 7: Limitations & Next Steps -- the two eval-status lines are pulled
+    # live from metrics.json via the same functions the README uses, so this
+    # slide automatically shows the real result (including an explicit "no
+    # significant relationship" or "UNDERPOWERED" statement) once Aadit's
+    # local GDELT/labelling runs produce it, with no code change needed here.
     s7 = add_content_slide(prs, "Limitations & Next Steps")
     add_bullets(s7, [
-        ("Impact Score event-study correlation: infrastructure built and unit-tested, but GDELT is unreachable from "
-         "this dev sandbox, so a real n≥200 sample hasn't been produced yet here.", 0),
-        ("Event classification accuracy: pending human labelling of the gold set; classifier frozen at rule-v1 "
-         "specifically so that score will be honest, not tuned after the fact.", 0),
+        (format_impact_event_study_status(metrics).replace("**", ""), 0),
+        (format_event_classification_status(metrics).replace("**", ""), 0),
         ("Market data (Treasury curve, equity spot) is PROVISIONAL in this build — fetched via a tool with a "
          "summarising model in the loop, not a direct download; a verification script exists to cross-check it.", 0),
         ("English-only; GDELT gives headline-level text only (no article body); the social replay source is "

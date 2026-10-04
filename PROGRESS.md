@@ -410,3 +410,53 @@ Status: **DONE**
   every other limitation already documented in `docs/ASSUMPTIONS.md` -- nothing on the pending items is a
   fabricated placeholder number; they're named as pending in prose, which needs no guard because no number
   is claimed for them.
+
+## Changes requested before Phase 10
+Status: **DONE**
+
+1. **`docs/presentation.pdf`**: repo structure names this file explicitly (not just the `.pptx`). LibreOffice
+   (needed to export it) is confirmed not installed here. Built `scripts/audit_compliance.py` -- checked
+   required files, no-oversized-files, no-secrets, and `pytest` passing -- and **ran it for real**: it
+   currently fails with exactly one issue, `MISSING required file: docs/presentation.pdf`, by design. Won't
+   pass until Aadit exports it locally and commits it (`docs/USER_TODO.md` step 6).
+2. **Pending-metric handling clarified and improved**: `format_event_classification_status()` /
+   `format_impact_event_study_status()` (new, in `generate_readme.py`, imported by `generate_deck.py`) now
+   put a real status line for BOTH metrics into Key Results / the Limitations slide -- not just omit them.
+   Currently both say "pending" with the exact command to produce them; once real, they'll say the actual
+   number, **explicitly flagging "UNDERPOWERED" or "no statistically significant relationship" rather than
+   printing a bare correlation that looks more conclusive than it is.** Pending metrics, listed exactly:
+   `event_classification_eval` (needs gold labels) and `impact_score_event_study` (needs a real n>=200
+   GDELT sample).
+3. **Demo run time fixed at the root.** `run.py --mode demo` now loads the committed `results/` as-is by
+   default (no FinBERT recompute) -- `--recompute` (or `--mode live`, which implies it) does the full
+   rebuild. **Caught a real bug while verifying this**: `--no-dashboard` returned immediately after
+   starting the API subprocess, which fired `atexit` and killed it within milliseconds -- the API looked
+   like it was "hanging" in a first test run, but it had actually already been torn down before the first
+   health-check poll landed. Fixed by blocking on `api_proc.wait()`. **Real measured startup: ~310ms** once
+   the process is running (confirmed by direct `curl` polling after a pytest-level integration test hit an
+   unrelated environment hang with nested subprocess trees -- the fast mocked tests plus this direct
+   measurement together give solid confidence, so the slow test stays in the suite as opt-in evidence
+   rather than blocking on diagnosing a sandbox-specific subprocess-cleanup quirk). 7 new tests in
+   `tests/test_run_startup.py` (6 fast + 1 opt-in real).
+4. **"Manual scenario — not triggered by a real signal"** now labels every non-real-trigger result
+   consistently: the dashboard's Stress Test tab (when no real signal has fired) and Scenario Explorer tab
+   (both the tab-level warning and the per-result label), `scripts/run_stress_test.py`'s
+   `illustrative_example_NOT_from_a_real_trigger` label, and the deck generator's fallback text and chart
+   title.
+5. **Deck screenshot slots added.** Slide 5 now prefers a real screenshot from `docs/screens/` per slot
+   (`live_signal_feed.png`, `stress_test.png`, `scenario_explorer.png`), falling back to the generated
+   chart for any slot without one yet -- no code change needed once Aadit adds them, just re-run
+   `scripts/generate_deck.py`. Exact list in `docs/USER_TODO.md` step 6.
+6. **Clean-clone result, reported as promised**: finished at **1334s (~22 min) total install time** in this
+   dev sandbox (consistent with this environment's demonstrated wildly inconsistent install speeds
+   throughout the build -- not representative of a normal machine). `pytest tests/` in the clean clone: **120
+   passed, 1 skipped, 56s**. This was cloned from an earlier commit in this round, so **Phase 7 is not being
+   marked fully passed** -- a fresh clean-clone check against the final state is explicitly planned for
+   Phase 11 (and again after Aadit's local data refresh, per `docs/USER_TODO.md`).
+
+`docs/USER_TODO.md` rewritten with the exact ordered local-steps sequence requested: build_cache ->
+resample gold set -> label + score classifier -> event study + provisional-data verify -> regenerate
+pipeline output + README/deck -> PDF export + screenshots -> re-run the compliance audit and clean-clone
+check.
+
+124/124 fast tests passing (1 opt-in slow test skipped by default, verified manually for this round).

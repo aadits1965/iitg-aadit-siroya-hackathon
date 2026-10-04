@@ -142,7 +142,7 @@ def main():
     example_result = revalue_portfolio(portfolio, curve, equity_spot, example_shock)
     output["illustrative_example_NOT_from_a_real_trigger"] = summarize(
         example_result,
-        label="ILLUSTRATIVE ONLY -- manually constructed, not from any real triggered signal",
+        label="Manual scenario — not triggered by a real signal",
     )
 
     # Required Phase 4.5 comparison: full reprice vs naive approximation, on a
