@@ -124,5 +124,144 @@
     "status": "not_run",
     "reason": "GDELT rate-limited: HTTP 429 returned on every query for 2+ hours (0 articles returned). Abandoned as a data source for this submission.",
     "attempted_on": "2026-10-18"
+  },
+  "event_classification_eval": {
+    "classifier_version": "rule-v1",
+    "n_gold_examples": 200,
+    "per_class": {
+      "Geopolitical": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 2.0
+      },
+      "Macroeconomic": {
+        "precision": 1.0,
+        "recall": 0.3448275862068966,
+        "f1-score": 0.5128205128205128,
+        "support": 29.0
+      },
+      "Credit Event": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 1.0
+      },
+      "Merger/Acquisition": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 0.0
+      },
+      "Product Launch": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 0.0
+      },
+      "Other": {
+        "precision": 0.893048128342246,
+        "recall": 0.9940476190476191,
+        "f1-score": 0.9408450704225352,
+        "support": 168.0
+      }
+    },
+    "macro_avg": {
+      "precision": 0.4732620320855615,
+      "recall": 0.3347188013136289,
+      "f1-score": 0.363416395810762,
+      "support": 200.0
+    },
+    "macro_avg_classes_included": [
+      "Geopolitical",
+      "Macroeconomic",
+      "Credit Event",
+      "Other"
+    ],
+    "accuracy": 0.885,
+    "accuracy_ci95": [
+      0.833352831001289,
+      0.9221362676815335
+    ],
+    "confusion_matrix": {
+      "labels": [
+        "Geopolitical",
+        "Macroeconomic",
+        "Credit Event",
+        "Merger/Acquisition",
+        "Product Launch",
+        "Other"
+      ],
+      "matrix": [
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          2
+        ],
+        [
+          0,
+          10,
+          0,
+          2,
+          0,
+          17
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          0,
+          0,
+          0,
+          167
+        ]
+      ]
+    },
+    "majority_baseline": {
+      "description": "always predicts 'Other'",
+      "accuracy": 0.84,
+      "accuracy_ci95": [
+        0.7828592983645107,
+        0.8843258796930468
+      ],
+      "macro_avg": {
+        "precision": 0.21,
+        "recall": 0.25,
+        "f1-score": 0.22826086956521738,
+        "support": 200.0
+      },
+      "macro_avg_classes_included": [
+        "Geopolitical",
+        "Macroeconomic",
+        "Credit Event",
+        "Other"
+      ]
+    }
   }
 }
