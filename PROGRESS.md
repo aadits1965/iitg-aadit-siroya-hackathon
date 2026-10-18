@@ -853,3 +853,42 @@ Regenerated README (same `event_classifier_stat()` used there too), ran pyflakes
 (image placement, text-box capacity estimates against character counts for the longest bullets) given
 LibreOffice still isn't available in this sandbox -- documented as a continuing limitation; Aadit's own
 render remains the authoritative check.
+
+## Post-PDF round (2026-10-19): README deck link, DEMO_SCRIPT and QA_PREP refresh
+
+Pulled `dd01ade` (final PDF export + Aadit's manual slide-6 wording edit). **Did not regenerate
+`docs/presentation.pptx`** per instruction -- `scripts/generate_deck.py`'s slide-6 callout text updated in
+source only (not executed) to match the shipped wording ("$13.79M stressed loss (-2.09%)" / "Fed
+severely-adverse scenario on the synthetic portfolio, triggered by a real headline"), so a future
+regeneration won't silently revert Aadit's edit.
+
+1. **README's Slide Deck line now points to `docs/presentation.pdf`**, computed live by
+   `generate_readme.py::slide_deck_link()` (checks the file actually exists rather than hardcoding the
+   string) via a new `{{SLIDE_DECK_LINK}}` template placeholder -- survives regeneration by construction,
+   not because the template happens to still say the right thing. Demo Video placeholder untouched.
+2. **`docs/DEMO_SCRIPT.md` fully rewritten** for the current state: Intro 30s -> Setup/Run 30s -> Live
+   Signal Feed 30s -> Audit Log 30s (3/76 fired, the sentiment<0 gate explained with the real Hasbro/Lowe's
+   bug that motivated it) -> Stress Test 50s (headline $658.5M -> $644.7M, -$13.79M / -2.09%, MTM +$1.3M vs
+   credit loss $15.1M) -> Scenario Explorer 25s (labelled manual) -> Engine Quality 30s (FinBERT vs
+   baselines, event classifier 88.5% vs 84.0% baseline) -> Results & limitations 45s. Totals 4:30 with a
+   30s buffer under 5:00. Added a full numbers-used checklist table (each spoken number -> exact
+   metrics.json/stress_test_output.json field).
+3. **`docs/QA_PREP.md` expanded from 25 to 31 Q&As.** Updated 4 stale answers (Q1/Q9: GDELT framed as
+   "pending" -> now states the confirmed 0-articles/429 outcome; Q14: fully rewritten to walk through the
+   provisional-curve retraction -- the earlier "transcription error" conclusion was itself wrong, caused by
+   a bug in this project's own curve-parsing code, not the WebFetch data; Q22: Geopolitical now also noted
+   as failing the sentiment gate; Q25: "run GDELT" replaced since that already happened and failed). Added
+   6 new Q&As (26-31) covering: why a single Macroeconomic headline fires the full severe scenario (class-
+   level mapping, not headline-level severity); the bond-loses/option-gains P&L mechanics (credit-spread-
+   dominates-rate-decrease for bonds; put-options-in-a-crash for options); why ship an event classifier
+   that barely beats its baseline (precision/recall tradeoff, frozen-not-tuned discipline); why Credit
+   Event/Geopolitical can't be evaluated (n=1/n=2, real data scarcity not a sampling bug); the gold-label
+   contamination explained plainly (the 's'-shortcut bug, full re-label, `label_source` enforcement); why
+   the impact>7 threshold can't be called validated given GDELT's failure.
+
+Re-ran `scripts/audit_compliance.py`: **AUDIT PASSED** for the first time (PDF now present). Full suite:
+**163 passed, 2 skipped**. `docs/COMPLIANCE.md` updated: PDF item ticked done; `n_fired` corrected from a
+stale 5 to the current 3; GitHub repo item corrected to reflect it was deliberately created **private**
+during development (the brief requires public for submission -- a real remaining step, not done yet);
+dataset-sources item ticked done (already documented across README + ASSUMPTIONS.md); QA_PREP/DEMO_SCRIPT
+counts updated.

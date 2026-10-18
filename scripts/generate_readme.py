@@ -27,7 +27,18 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_PATH = ROOT / "docs" / "README_template.md"
 METRICS_PATH = ROOT / "results" / "metrics.json"
 STRESS_PATH = ROOT / "results" / "stress_test_output.json"
+PDF_PATH = ROOT / "docs" / "presentation.pdf"
 OUT_PATH = ROOT / "README.md"
+
+
+def slide_deck_link() -> str:
+    """Points at the PDF once it exists (required by the repo structure and
+    enforced by scripts/audit_compliance.py) rather than a hardcoded string
+    that would silently go stale the moment the PDF was added -- checked live
+    against the actual file, not assumed."""
+    if PDF_PATH.exists():
+        return "[docs/presentation.pdf in this repo]"
+    return "[docs/presentation.pptx in this repo -- PDF export pending, see docs/USER_TODO.md]"
 
 
 def require(d: dict, *path):
@@ -241,8 +252,11 @@ def main():
         raise RuntimeError("README_template.md is missing the {{KEY_RESULTS_SECTION}} placeholder.")
     if "{{EVENT_CLASSIFICATION_LIMITATION_BULLET}}" not in template:
         raise RuntimeError("README_template.md is missing the {{EVENT_CLASSIFICATION_LIMITATION_BULLET}} placeholder.")
+    if "{{SLIDE_DECK_LINK}}" not in template:
+        raise RuntimeError("README_template.md is missing the {{SLIDE_DECK_LINK}} placeholder.")
     final = template.replace("{{KEY_RESULTS_SECTION}}", key_results_section)
     final = final.replace("{{EVENT_CLASSIFICATION_LIMITATION_BULLET}}", event_class_limitation_bullet)
+    final = final.replace("{{SLIDE_DECK_LINK}}", slide_deck_link())
 
     OUT_PATH.write_text(final, encoding="utf-8")
     print(f"README.md written ({len(final)} chars). Every number above traced to {METRICS_PATH.name} / "

@@ -4,7 +4,7 @@
 **College Email ID:** s.aadit@iitg.ac.in
 **College / Campus:** IIT Guwahati
 **Demo Video Link:** [YouTube Unlisted - to be added before submission, see docs/USER_TODO.md]
-**Slide Deck Link (if hosted externally):** [docs/presentation.pptx in this repo]
+**Slide Deck Link (if hosted externally):** {{SLIDE_DECK_LINK}}
 
 ## 1. Project Overview / Problem Statement & Approach
 

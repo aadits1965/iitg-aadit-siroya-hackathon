@@ -7,11 +7,13 @@ that's the point of this document.
 
 **1. Why should I believe the Impact Score means anything?**
 Right now, you shouldn't fully — the event-study validation (Spearman correlation between Impact Score
-and realised abnormal returns) is pending a real GDELT sample (n≥200 for adequate power; see
-`docs/EVALUATION.md` section 3). The methodology is implemented and mechanically verified (hand-built
-price series, no-look-ahead date alignment), but GDELT is unreachable from the dev environment this was
-built in. Until that result exists, the Impact Score should be read as a **transparent, documented
-rule-based severity score** — every component is visible — not an empirically-validated predictor.
+and realised abnormal returns) was never run. GDELT, the news source it needed for a large enough
+timestamped, ticker-linked sample, returned HTTP 429 on every query for 2+ hours (0 articles) on a real
+attempt and has been abandoned as a data source for this submission — this isn't a hypothetical gap, it's
+a confirmed dead end with this source. The methodology itself is implemented and mechanically verified
+(hand-built price series, no-look-ahead date alignment; see `docs/EVALUATION.md` section 3), but until a
+real result exists, the Impact Score should be read as a **transparent, documented rule-based severity
+score** — every component is visible — not an empirically-validated predictor.
 
 **2. Is there leakage in the sentiment evaluation?**
 Checked specifically: FinBERT is fine-tuned on Financial PhraseBank (confirmed from its model card). The
@@ -55,9 +57,10 @@ Module B's trigger engine does. Not built further than that in this prototype.
 
 **9. What breaks in production (latency, rate limits, adversarial/fake news)?**
 FinBERT inference (~86-138ms/doc measured) is fine at this scale but wouldn't hold at high-frequency-feed
-volume without batching/GPU. GDELT's real rate limits weren't even reachable to test properly from this
-dev environment (persistent 429s — see below). No adversarial-text defences are implemented; a
-coordinated fake-headline campaign would be scored at face value.
+volume without batching/GPU. GDELT's rate limit is a confirmed, not hypothetical, problem: a real attempt
+returned HTTP 429 on every query for over 2 hours straight (0 articles) — this project's own news
+ingestion hit exactly the production failure mode this question is asking about. No adversarial-text
+defences are implemented; a coordinated fake-headline campaign would be scored at face value.
 
 **10. Why is NLP headline-level only for GDELT, not full article text?**
 Confirmed live: GDELT DOC 2.0's JSON response has no article-body field, only title/url/seendate/domain
@@ -93,14 +96,22 @@ hand-labelled gold set is honest. `scripts/score_event_classifier.py` refuses to
 complete, and any future rule change becomes `rule-v2`, scored separately, never re-tuned against the same
 gold rows `rule-v1` was judged on.
 
-**14. What's "provisional" market data, and why?**
-The Treasury yield curve and 5 equity spot prices in this submission were fetched via a tool (WebFetch)
-that passes page content through a summarising model, because this dev sandbox's direct network calls to
-treasury.gov and Yahoo Finance fail outright (confirmed, not assumed). It's real, live-fetched data, not
-fabricated — but not independently verified byte-for-byte either. `scripts/verify_provisional_data.py`
-cross-checks it against a direct download once run from a normal network. The Fed stress-scenario numbers
-are *not* provisional — those were re-sourced via a direct `curl` to federalreserve.gov (reachable
-directly, unlike Treasury/Yahoo) and parsed from the raw HTML table.
+**14. What's "provisional" market data — and what actually happened with it?**
+Market data is **not** provisional anymore — the Treasury curve and equity spot prices are fetched
+directly (`scripts/build_cache.py --market-only`), as of 2026-10-16. But the path to get there is worth
+knowing, because it's a real example of catching my own mistake rather than a clean story: an earlier
+WebFetch-relayed snapshot (summarising model in the loop, used only because this dev sandbox's direct
+network calls failed) was later compared against a direct fetch and looked wrong by 38-141bp at every
+tenor — I called that a "transcription error" and wrote it up as one. It wasn't. The actual bug was in my
+*own* curve-parsing code: it took the last row of Treasury's annual CSV assuming the file is sorted
+ascending by date; the file is actually sorted descending (newest first), so "last row" was the *year's
+first business day*, not the latest — I was comparing the provisional snapshot's October date against a
+January row by accident. Re-checked per tenor against the *correct* date: the original provisional
+snapshot matched exactly, 0bp difference, every tenor. The provisional data was never wrong. I was.
+Fixed the parser to pick the max date regardless of file order, added a regression test with deliberately
+shuffled rows, and left the wrong conclusion in `docs/ASSUMPTIONS.md`/`docs/DATA_VERIFICATION.md` as a
+visible retraction rather than quietly editing it out. The Fed stress-scenario numbers were never affected
+by any of this — those were separately sourced via a direct `curl` to federalreserve.gov.
 
 **15. Does demo mode actually reproduce the same result every time?**
 Yes, verified directly: ran the real engine (real FinBERT) twice end-to-end and diffed
@@ -152,9 +163,12 @@ writing, zero real signals in the cached data are both Geopolitical and above th
 showing that particular scenario live requires the manual path.
 
 **22. Why is there no real Geopolitical trigger in the data?**
-The current cache is Mastodon-live-posts and a replayed historical-tweet dataset — genuinely Geopolitical,
-high-impact stories are rare in that mix. The wider real GDELT pull (pending a normal network connection)
-is expected to surface more variety.
+Checked directly: exactly one Geopolitical-classified signal exists in the 76-signal corpus, at impact 6.35
+(below the 7.0 threshold) and sentiment +0.10 (also fails the sentiment-negative gate — it wouldn't fire
+even at a lower impact threshold). The current cache is Mastodon live-posts and a replayed historical-tweet
+dataset — genuinely Geopolitical, high-impact, bad-news stories are rare in that mix. With GDELT now
+abandoned as a data source for this submission (see Q1/Q9), there's no further step expected to surface
+one — this is the corpus the demo has to work with.
 
 ## Broader honesty checks
 
@@ -169,5 +183,88 @@ public hashtag timelines work with no auth and carry real timestamps — confirm
 it, not assumed.
 
 **25. If I gave you one more day, what would you do?**
-Run the real GDELT pull and finish the two pending evaluations (event classification, impact-score study)
-— both are fully built and waiting on that one data source.
+Not retry GDELT — it's a confirmed dead end for this submission, not a transient issue. I'd spend the day on
+a different news source for the impact-score event study (the one evaluation that's genuinely stuck), and
+on expanding the gold-labelling sample specifically for Credit Event and Geopolitical, which currently have
+1 and 2 examples respectively — nowhere near enough to say anything about how the classifier performs on
+them.
+
+## The headline stress result, walked through in detail
+
+**26. Why does "US stock futures slip ahead of #inflation report" trigger a full Fed severely-adverse
+scenario? That headline doesn't sound severe.**
+Because the mapping is by event *class*, not by headline severity — this signal classified as
+Macroeconomic (impact 7.97, sentiment -0.96), and in `config/scenarios.yaml`, Macroeconomic maps to the
+`fed_severely_adverse` tier, portfolio-wide. That's a real, documented design choice, not a bug: this
+project doesn't have a graduated set of macro scenarios of different severities, only the one sourced
+Fed scenario plus illustrative lighter tiers for *other* event classes (idiosyncratic, geopolitical). Any
+Macroeconomic-classified signal that clears the impact and sentiment gates fires the same severe scenario,
+regardless of how severe the specific headline sounds in isolation. The honest critique: a single
+inflation-report headline probably shouldn't carry the same weight as, say, a confirmed recession
+announcement — a real production version would need graduated macro severity tiers, which this prototype
+doesn't have.
+
+**27. Walk me through the P&L: why do bonds lose $27.6M when the scenario pushes Treasury yields DOWN?
+Why do options gain $43.2M — what positions are those?**
+Bonds lose despite falling rates because of *credit spreads*, not the base curve. The Fed scenario applies
+two things at once to corporate bonds: the Treasury curve falls 200bp (`rate_parallel_bp: -200`), but
+investment-grade credit spreads widen 440bp (`credit_spread_widening_bp.investment_grade`) — and bonds in
+this model discount at curve-rate-plus-spread (`src/modules/stress_test/pricing.py::bond_price()`). Net:
+a roughly 240bp *increase* in the effective discount rate despite the lower base curve, so bond prices
+fall. The rate decrease alone would have helped; the spread widening dominates it.
+Options gain because all 5 option positions in the portfolio are **puts** on JPM and NVDA
+(`data/synthetic/portfolio.csv`), and the scenario is a 54% equity crash (`equity_pct_move: -0.54`) plus a
+VIX spike (baseline 23.4 → peak 72, roughly 3x implied vol). A deep-in-the-money put, revalued at much
+lower spot and much higher implied volatility, is worth dramatically more — that's the real mechanism, not
+an error. (There are no calls in this portfolio, so every option position benefits from the same crash
+that hurts the equity-linked credit exposure elsewhere.)
+
+## Event classification: the real numbers, and what I'd change
+
+**28. The event classifier is 88.5% accurate versus an 84.0% always-'Other' baseline, and only catches 34%
+of true Macroeconomic headlines. Why ship it at all? What would you actually change?**
+I'd ship it with that number stated plainly, which is what this submission does — not because 88.5% vs
+84.0% is a strong result (it barely beats guessing the majority class), but because the alternative is
+shipping *nothing* measurable, or quietly tuning the rule on this exact gold set until the number looks
+better, which this project's own rules explicitly forbid (the classifier is frozen as `rule-v1` specifically
+so this score is honest). The real information is in the per-class breakdown, not the headline accuracy:
+100% precision on Macroeconomic means it's never *wrong* when it calls one, but 34% recall means it misses
+two out of three real ones — it's a conservative, high-precision/low-recall rule set, which for a
+downstream trigger engine (fires a stress test) is a defensible default (false positives are more costly
+than missed triggers here) but a real limitation for anything that needs broad coverage. What I'd change:
+not tune the frozen rules against this gold set — that would be the exact violation this project is built
+to avoid — but build a `rule-v2` with looser Macroeconomic keyword matching, scored on a *fresh* sample,
+and compare the two versions' precision/recall tradeoff explicitly rather than just chasing a higher number.
+
+**29. Why are Credit Event and Geopolitical classes "unvalidated" — only 1 and 2 examples?**
+Because the 200-row gold sample was drawn from the real cached corpus (Mastodon live posts + historical
+tweet replay), and those two event types are simply rare in that specific mix — this is a property of the
+data available, not a sampling bug. With n=1 and n=2, no precision/recall number for those classes means
+anything statistically — a single example could be right or wrong by pure chance. The honest move, which
+this submission takes, is to say plainly that these classes can't be evaluated yet rather than report a
+0% or 100% figure computed from 1-2 examples as if it were a real measurement. Fixing this needs more
+Credit-Event/Geopolitical-rich source data (real financial news, which is exactly what GDELT would have
+provided before it was rate-limited) or a much larger gold sample drawn from a source where those classes
+are more common.
+
+**30. I heard the gold-label set was contaminated at one point — what happened, in plain terms?**
+The labelling tool had a shortcut: a single keystroke ('s') that accepted the classifier's own suggested
+label directly as the "human" gold label, with no record of which rows used it. That's circular — scoring
+a classifier against a gold set partly made of that same classifier's own guesses doesn't measure
+anything. I didn't try to figure out afterward which specific rows had used the shortcut (there was no way
+to know); instead the entire 200-row set was discarded and re-labelled from scratch, blind — the tool no
+longer shows the classifier's suggestion at all, the shortcut is removed entirely (not just discouraged),
+and every label now carries a `label_source=human_blind` stamp. The scoring script refuses to run unless
+every single row has that stamp. The 88.5%/84.0%/34% numbers in this submission are from that clean,
+re-labelled set.
+
+**31. GDELT returned 0 articles and the impact-score event study never ran — so the Impact Score itself is
+unvalidated. Why should I trust the trigger threshold of 7, specifically?**
+Short answer: you shouldn't trust that "7" is the statistically optimal cutoff — no validation exists to
+support that specific number over, say, 6 or 8. It's a round-number, documented-as-illustrative threshold
+(`config/scenarios.yaml`), not a tuned one. What the threshold *does* do, mechanically, is combine with the
+impact formula's own components (sentiment magnitude, event severity prior, source breadth, entity
+importance, novelty) to require a genuinely unusual, high-conviction story before firing a stress test —
+in practice, out of 76 real signals, exactly 3 clear both the impact>7 and sentiment<0 gates, which is a
+plausible-looking selectivity, but "plausible-looking" is not the same as "empirically validated," and I
+want that distinction to be explicit rather than implied.

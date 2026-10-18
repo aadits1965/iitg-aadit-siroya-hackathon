@@ -351,9 +351,14 @@ def main():
     ], left=0.5, top=2.7, width=5.9, height=3.5, font_size=18)
 
     if headline is not None:
+        # Wording matches Aadit's manual edit to the shipped deck (dd01ade) --
+        # kept in sync here so a future regeneration doesn't silently revert
+        # it. Do not regenerate docs/presentation.pptx without checking this
+        # still matches what's actually shipped.
         add_callout_panel(s6, left=6.8, top=2.7, width=5.9, height=2.0, lines=[
-            (f"${abs(headline['total_stressed_loss']):,.0f} real stressed loss", True),
-            (f"{abs(headline['total_stressed_loss_pct']):.2f}% of portfolio value, from one real headline", False),
+            (f"${abs(headline['total_stressed_loss'])/1e6:.2f}M stressed loss "
+             f"({headline['total_stressed_loss_pct']:+.2f}%)", True),
+            ("Fed severely-adverse scenario on the synthetic portfolio, triggered by a real headline", False),
         ], big_font=24, small_font=15)
 
     # Slide 7: Limitations & Next Steps -- the eval-status lines are pulled
