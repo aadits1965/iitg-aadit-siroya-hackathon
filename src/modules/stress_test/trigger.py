@@ -47,6 +47,7 @@ def evaluate_signals(signals: list[dict], threshold: float | None = None, cooldo
 
     for sig in ordered:
         impact = sig["impact"]["score"]
+        sentiment = sig["sentiment"]["score"]
         event_class = sig["event"]["event_class"]
         created_at = datetime.fromisoformat(sig["created_at_utc"])
         cluster_key = (tuple(sorted(sig["tickers"])) or tuple(sorted(sig.get("macro_tags", []))), event_class)
@@ -54,6 +55,18 @@ def evaluate_signals(signals: list[dict], threshold: float | None = None, cooldo
         if impact <= threshold:
             decisions.append(TriggerDecision(
                 sig["signal_id"], False, f"impact {impact} <= threshold {threshold}",
+                event_class, impact, sig["tickers"], sig.get("sectors", []), sig.get("countries", []), created_at,
+            ))
+            continue
+
+        if sentiment >= 0:
+            # Impact Score measures how much a story matters, not whether it's good or
+            # bad news -- a strongly positive upgrade can score just as high as a
+            # downgrade (see ASSUMPTIONS.md "Stress tests only fire on adverse
+            # signals"). A stress test models losses, so a non-negative sentiment
+            # signal must never fire one regardless of impact.
+            decisions.append(TriggerDecision(
+                sig["signal_id"], False, f"sentiment {sentiment:.3f} >= 0 (not adverse) -- impact {impact} alone doesn't fire a stress test",
                 event_class, impact, sig["tickers"], sig.get("sectors", []), sig.get("countries", []), created_at,
             ))
             continue

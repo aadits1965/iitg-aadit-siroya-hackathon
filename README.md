@@ -90,7 +90,7 @@ rather than this project's dev sandbox.
 FinBERT's macro-F1 CI does not overlap either baseline's. Inference measured at 138.5ms/doc on CPU.
 
 **Module B stress test** (real portfolio: 50 positions, ~$992M notional)
-76 real signals evaluated, 5 fired a stress test. Curve as-of 2026-10-02.
+76 real signals evaluated, 3 fired a stress test. Curve as-of 2026-10-02.
 > **Note:** the market data behind the stress-test numbers below is PROVISIONAL (see `docs/DATA_VERIFICATION.md` section 9 and `docs/USER_TODO.md`) -- fetched via a tool that passes content through a summarising model, not a direct download, because this dev sandbox cannot reach treasury.gov/Yahoo Finance directly. Cross-check with `scripts/verify_provisional_data.py` before treating these exact figures as final.
 
 

@@ -88,7 +88,7 @@ def main():
     logger.info("loaded %d real signals from results/signals.jsonl", len(signals))
     decisions = evaluate_signals(signals)
     fired = [d for d in decisions if d.fired]
-    logger.info("%d / %d signals fired a stress test (impact > threshold, cooldown clear)", len(fired), len(decisions))
+    logger.info("%d / %d signals fired a stress test (impact > threshold, sentiment < 0, cooldown clear)", len(fired), len(decisions))
 
     output = {
         "data_provisional": data_provisional,

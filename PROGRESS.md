@@ -575,3 +575,37 @@ re-verifying `DEMO_SCRIPT.md`'s numbers against regenerated results) runs after 
 6. Re-verify `docs/DEMO_SCRIPT.md`'s spoken numbers against whatever `results/` looks like after step 1,
    before recording.
 7. Push to GitHub, make public, record + upload the demo video, then do the real (non-dry-run) Phase 11.
+
+## Bug fix: Module B fired on positive-sentiment signals (found on Aadit's local run, 2026-10-18)
+
+**Bug**: 2 of 5 fired stress tests came from strongly *positive* headlines -- a Hasbro analyst upgrade
+(sentiment +0.942) and a Lowe's positive rating note (sentiment +0.916). `evaluate_signals()` in
+`src/modules/stress_test/trigger.py` fired on `impact > threshold` alone; Impact Score measures how much a
+story matters, not whether it's good or bad news, so a strongly positive story can score just as high as
+a strongly negative one.
+
+**Fix**: added a `sentiment_score < 0` requirement to the trigger engine (Module B only -- the frozen
+`rule-v1` event classifier and the Impact Score formula are untouched). Full rationale in
+`docs/ASSUMPTIONS.md` ("Module B: stress tests only fire on adverse signals"). 4 new regression tests in
+`tests/test_trigger.py::TestSentimentGate`: positive-sentiment high-impact must not fire (the exact
+Hasbro/Lowe's shape), zero-sentiment high-impact must not fire, negative-sentiment high-impact must still
+fire, and when both impact and sentiment would fail, the reported reason names impact first.
+
+**Re-ran the stress test on the existing `results/signals.jsonl`** (no engine recompute needed -- this is
+a Module B trigger-logic fix, not an NLP signal-generation fix). Now **3 / 76 fire** (down from 5):
+
+| signal_id | headline | sentiment | impact | event_class | scenario |
+|---|---|---|---|---|---|
+| sig_3e2f9d02a30ab82b | "US stock futures slip ahead of #inflation report..." | -0.960 | 7.97 | Macroeconomic | fed_severely_adverse |
+| sig_afacc39e51bab7f3 | "U.S. jobs growth stalls at 29,000 in September as unemployment rises to 4.2%..." | -0.942 | 7.93 | Macroeconomic | fed_severely_adverse |
+| sig_bf3a0340e01aeb08 | "UPDATE US Fed Minutes Release Amid Diminished Rate-Hike Prospects..." | -0.640 | 7.25 | Macroeconomic | fed_severely_adverse |
+
+All three resolve to the same `fed_severely_adverse` / portfolio-wide scenario (same Macroeconomic
+event-class-to-tier mapping), so the headline P&L is unchanged: value $656,917,251 -> $643,610,408, total
+stressed loss $-13,306,843 (**-2.03%**, not the "-202.56%" my own ad hoc inline report script briefly
+mis-displayed by double-applying a percent format to an already-percent field -- the pipeline's own output
+and console summary were correct throughout).
+
+Regenerated `results/stress_test_output.json`, `README.md`, `docs/presentation.pptx`, and the 3 deck chart
+PNGs. Full suite: **138 passed, 2 skipped** (4 new). `scripts/audit_compliance.py`: same single expected
+failure (`docs/presentation.pdf` missing), nothing new.

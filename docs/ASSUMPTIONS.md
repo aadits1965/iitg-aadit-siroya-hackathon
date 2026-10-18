@@ -163,6 +163,33 @@ this prototype and is named here as a limitation, not silently approximated as i
   floating leg is priced via the standard par-reset simplification (PV(floating) = notional x (1 - DF(T))).
   Both are standard simplifications for a prototype of this scope, not full term-structure models.
 
+## Module B: stress tests only fire on adverse signals (sentiment < 0)
+
+**Bug found on a real local run (2026-10-18):** 2 of the 5 fired stress tests came from strongly
+*positive* headlines -- a Hasbro analyst upgrade (sentiment +0.942) and a Lowe's positive rating note
+(sentiment +0.916). Both had high Impact Scores and fired purely on `impact > threshold` in
+`src/modules/stress_test/trigger.py`'s `evaluate_signals()`.
+
+**Root cause:** Impact Score (`src/nlp/engine.py`'s impact component) measures how much a story matters --
+sentiment *magnitude*, source breadth, entity importance, novelty -- not whether the news is good or bad.
+A strongly positive upgrade moves the needle on "this matters" exactly as much as a downgrade of the same
+magnitude would. The frozen event classifier (`rule-v1`) is a separate, intentionally untouched component
+(see "Event classifier: frozen at rule-v1" above) and was not the source of this bug -- it correctly
+classified these as non-credit events; the trigger engine simply never checked sentiment direction before
+this fix.
+
+**Fix:** `evaluate_signals()` now requires `sentiment_score < 0` in addition to `impact > threshold` before
+a signal can fire. This is a Module B trigger-engine rule, not a change to the frozen classifier or the
+Impact Score formula -- a stress test models *losses*, so it has no meaning for a signal whose sentiment
+is non-negative, regardless of how high its Impact Score is. `sentiment_score == 0` (neutral) also does
+not fire, by the same logic -- a stress test needs a reason to expect a loss, and neutral sentiment gives
+none.
+
+**Regression tests:** `tests/test_trigger.py::TestSentimentGate` -- a positive-sentiment, high-impact
+signal must not fire (the exact Hasbro/Lowe's shape); a zero-sentiment, high-impact signal must not fire;
+a negative-sentiment, high-impact signal must still fire; and when both impact and sentiment would fail,
+the reported reason names impact first (checked in that order).
+
 ## GDELT headline-level constraint
 
 - The GDELT DOC 2.0 API returns `title` (headline) but no article body field. This project's NLP therefore
