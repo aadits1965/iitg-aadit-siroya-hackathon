@@ -6,8 +6,9 @@ portfolio for every fired decision. Writes results/stress_test_output.json.
 Hard gates:
   - refuses to run against a SYNTHETIC_TEST_ONLY curve (must never appear in
     real output -- see src/modules/stress_test/curve.py)
-  - if the market data is PROVISIONAL (WebFetch-sourced, not a direct
-    download -- see docs/DATA_VERIFICATION.md section 9), the output is
+  - if the market data is PROVISIONAL (fetched via an AI-assisted web-fetch
+    tool, not a direct download -- see docs/DATA_VERIFICATION.md section 9),
+    the output is
     tagged `"data_provisional": true` at the top level and printed with a loud
     warning. Nothing with that flag set should go into the deck/README until
     `scripts/verify_provisional_data.py` passes.
@@ -105,8 +106,8 @@ def main():
     data_provisional = curve.is_provisional or is_equity_data_provisional()
     logger.info("curve as_of=%s is_provisional=%s source=%s", curve.as_of, curve.is_provisional, curve.source[:100])
     if data_provisional:
-        logger.warning("MARKET DATA IS PROVISIONAL (WebFetch-sourced, not a direct download). "
-                        "Run scripts/verify_provisional_data.py before using this output in the deck/README.")
+        logger.warning("MARKET DATA IS PROVISIONAL (fetched via an AI-assisted web-fetch tool, not a direct "
+                        "download). Run scripts/verify_provisional_data.py before using this output in the deck/README.")
 
     portfolio = load_portfolio(PORTFOLIO_PATH)
     equity_spot = load_latest_equity_spot()
@@ -130,8 +131,8 @@ def main():
     output = {
         "data_provisional": data_provisional,
         "data_provisional_warning": (
-            "Curve and/or equity prices were fetched via Claude's WebFetch tool (summarising model in the "
-            "loop), not a direct download. Do NOT use this output in the deck/README until "
+            "Curve and/or equity prices were fetched via an AI-assisted web-fetch tool (summarising model "
+            "in the loop), not a direct download. Do NOT use this output in the deck/README until "
             "scripts/verify_provisional_data.py passes. See docs/DATA_VERIFICATION.md section 9."
         ) if data_provisional else None,
         "curve_as_of": curve.as_of.isoformat(),

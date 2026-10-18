@@ -10,14 +10,16 @@ is `synthetic_test_only_curve()`, which is never called by `load_curve()` and
 must never be wired into any production path (dashboard, deck, metrics.json) --
 tests use it explicitly and by name so that is always visible in a diff/review.
 
-**Provisional data:** the currently-cached curve was fetched via Claude's
-WebFetch tool, which passes page content through a summarising model rather
-than returning raw bytes -- so despite being real, live-fetched data (not
-fabricated), it is marked `is_provisional=True` (a `# provisional: true` line
-in the cache file) until `scripts/verify_provisional_data.py` confirms it
-against a directly-downloaded copy. Callers that produce deck/README-facing
-output should check `curve.is_provisional` and refuse/warn accordingly -- see
-scripts/run_stress_test.py for the pattern.
+**Provisional data:** a curve fetched via an AI-assisted web-fetch tool (which
+passes page content through a summarising model rather than returning raw
+bytes) is marked `is_provisional=True` (a `# provisional: true` line in the
+cache file) until `scripts/verify_provisional_data.py` confirms it against a
+directly-downloaded copy -- so despite being real, live-fetched data (not
+fabricated), it isn't treated as final until verified. Callers that produce
+deck/README-facing output should check `curve.is_provisional` and refuse/warn
+accordingly -- see scripts/run_stress_test.py for the pattern. (The currently
+cached curve is a direct fetch, not provisional -- see
+`src/ingestion/market_data.py::fetch_treasury_curve()`.)
 """
 from __future__ import annotations
 
@@ -38,11 +40,12 @@ class YieldCurve:
     is_synthetic_test_only: bool
     source: str
     is_provisional: bool = False
-    """True when this snapshot was fetched via a tool that passes content through
-    a summarising model (Claude's WebFetch) rather than a direct byte-for-byte
-    download -- see docs/DATA_VERIFICATION.md section 9. Provisional data must
-    never be used in the deck/README/final numbers until
-    scripts/verify_provisional_data.py confirms it against a direct fetch."""
+    """True when this snapshot was fetched via an AI-assisted web-fetch tool
+    that passes content through a summarising model rather than a direct
+    byte-for-byte download -- see docs/DATA_VERIFICATION.md section 9.
+    Provisional data must never be used in the deck/README/final numbers
+    until scripts/verify_provisional_data.py confirms it against a direct
+    fetch."""
 
     def zero_rate(self, maturity_years: float) -> float:
         """Linear interpolation on the par curve, used as a zero-rate proxy.
@@ -77,8 +80,8 @@ class MissingCurveCacheError(RuntimeError):
 def load_curve(cache_path: Path = CACHE_PATH) -> YieldCurve:
     """Real data only. Raises MissingCurveCacheError if the cache hasn't been
     built yet -- callers (revaluation scripts, the dashboard) must not catch
-    this and silently substitute a synthetic curve; see docs/USER_TODO.md for
-    the one-time fetch step."""
+    this and silently substitute a synthetic curve; run
+    `python scripts/build_cache.py` once to fetch the real curve first."""
     if not cache_path.exists():
         raise MissingCurveCacheError(
             f"{cache_path} not found. Run `python scripts/build_cache.py` (from a normal network -- "

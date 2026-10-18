@@ -112,7 +112,7 @@ def main():
     data_provisional = stress.get("data_provisional", False)
     curve_as_of = stress.get("curve_as_of", "unknown date")
     market_data_line = (
-        f"(PROVISIONAL — WebFetch-sourced, as_of {curve_as_of})" if data_provisional
+        f"(PROVISIONAL — AI-fetch-tool-sourced, as_of {curve_as_of})" if data_provisional
         else f"(SOURCED — direct fetch, as_of {curve_as_of})"
     )
 
@@ -210,9 +210,9 @@ def main():
     b_tests = box(ax, (RX, 2.6), 4.6, 2.3,
                   f"Verified, not assumed\n\n"
                   f"{tests_label}\n"
-                  "91.7% / 94.5% entity-link precision\n(Wilson 95% CIs, two samples)\n"
                   "Demo mode: byte-identical signals.jsonl\nacross two real end-to-end runs\n"
-                  "Classifier frozen: rule-v1 (tag classifier-v1)", MUTED, 9.5)
+                  "Classifier frozen: rule-v1 (tag classifier-v1)\n"
+                  "Sentiment eval: disjoint dataset,\nno training-data leakage", MUTED, 9.5)
 
     legend_elements = [
         Line2D([0], [0], color=MUTED, lw=1.6, label="pipeline data flow"),

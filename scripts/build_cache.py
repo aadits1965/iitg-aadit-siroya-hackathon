@@ -83,7 +83,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     if not args.skip_market_data and not args.skip_provisional_check and _is_provisional(TREASURY_CACHE):
-        print("Existing cached market data is PROVISIONAL (fetched via WebFetch, not a direct download).")
+        print("Existing cached market data is PROVISIONAL (fetched via an AI-assisted web-fetch tool, not a direct download).")
         print("Running scripts/verify_provisional_data.py first to check it against a direct fetch...\n")
         check = subprocess.run([sys.executable, str(ROOT / "scripts" / "verify_provisional_data.py")])
         print()

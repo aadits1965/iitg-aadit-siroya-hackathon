@@ -9,8 +9,7 @@ maximise sample size -- the correlation test needs n>=200 for adequate power
 genuinely the original publish time -- excludes
 src/ingestion/social_twitter_replay.py output (raw_meta.timestamp_is_synthetic).
 
-Run `python scripts/build_cache.py` from a normal network first -- see
-docs/USER_TODO.md for the exact commands and expected runtime.
+Run `python scripts/build_cache.py` from a normal network first.
 """
 import json
 import sys

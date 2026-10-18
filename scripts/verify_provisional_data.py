@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-"""Cross-checks the PROVISIONAL market-data snapshots (fetched by Claude via
-WebFetch, which passes content through a summarising model -- see
-docs/DATA_VERIFICATION.md section 9) against a direct, un-summarised download,
-and reports any differences. Run this from a normal network (this dev sandbox's
-direct requests to treasury.gov/Yahoo Finance fail outright).
+"""Cross-checks the PROVISIONAL market-data snapshots (fetched via an
+AI-assisted web-fetch tool, which passes content through a summarising model --
+see docs/DATA_VERIFICATION.md section 9) against a direct, un-summarised
+download, and reports any differences. Run this from a normal network (this
+dev sandbox's direct requests to treasury.gov/Yahoo Finance fail outright).
 
 Nothing from the provisional snapshot should go into the deck/README/final
 numbers until this check passes -- if it reports any MISMATCH, investigate

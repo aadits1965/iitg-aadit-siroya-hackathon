@@ -4,8 +4,8 @@ scripts/build_cache.py from a normal network -- confirmed unreachable via direct
 requests from this dev sandbox (treasury.gov: HTTP 000 connection failure;
 yfinance: JSON decode errors -- see docs/DATA_VERIFICATION.md section 9).
 
-Treasury CSV column format confirmed live (via Claude's WebFetch tool, which
-reached the endpoint this sandbox's direct requests could not) on 2026-10-04:
+Treasury CSV column format confirmed live (via an AI-assisted web-fetch tool,
+which reached the endpoint this sandbox's direct requests could not) on 2026-10-04:
     Date,"1 Mo","1.5 Month","2 Mo","3 Mo","4 Mo","6 Mo","1 Yr","2 Yr","3 Yr",
     "5 Yr","7 Yr","10 Yr","20 Yr","30 Yr"
     10/02/2026,4.04,4.09,4.11,4.19,4.26,4.27,4.46,4.83,4.96,5.06,5.17,5.28,5.67,5.63

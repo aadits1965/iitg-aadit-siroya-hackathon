@@ -233,9 +233,9 @@ the reported reason names impact first (checked in that order).
 ## Treasury curve `as_of` bug: picked the year's FIRST row, not the latest (2026-10-19)
 
 **This section corrects an earlier, wrong conclusion in this same log.** A previous entry here claimed the
-provisional Treasury curve (fetched via WebFetch) was off by 38-141bp at every tenor against a direct
-download and called that a "transcription error." That comparison was itself wrong, and the conclusion is
-retracted -- see below.
+provisional Treasury curve (fetched via an AI-assisted web-fetch tool whose output passes through a
+summarising model) was off by 38-141bp at every tenor against a direct download and called that a
+"transcription error." That comparison was itself wrong, and the conclusion is retracted -- see below.
 
 **Root cause:** `fetch_treasury_curve()` took `lines[-1]` of the annual CSV response on the assumption the
 file is sorted ascending (oldest first). It is actually sorted **descending** (newest first) -- so
@@ -267,8 +267,8 @@ raw Treasury CSV again and compared the provisional snapshot's stated date (2026
 **Every tenor matches exactly.** The provisional 2026-10-02 snapshot was correct for its stated date all
 along -- there was never a transcription error. The earlier "38-141bp" gap was entirely an artifact of
 comparing it against the wrong row (2026-01-02, ~9.5 months earlier) due to the `as_of`-selection bug
-above, not a data-quality problem with the WebFetch-relayed snapshot. `docs/DATA_VERIFICATION.md` section 9
-is corrected accordingly -- it no longer claims a transcription error.
+above, not a data-quality problem with the relayed snapshot. `docs/DATA_VERIFICATION.md` section 9 is
+corrected accordingly -- it no longer claims a transcription error.
 
 For reference, the real two-week rate move (2026-10-02 -> 2026-10-16, the genuinely latest row) is a
 modest, plausible curve move -- short end up ~6-8bp, long end down ~17-20bp (a mild flattening) -- nothing
@@ -380,7 +380,8 @@ all report this exact "not run" status via `scripts/generate_readme.py::format_i
 
 **LibreOffice** was not installed in this dev sandbox throughout this build (confirmed repeatedly); it was
 installed via `winget` for this round specifically to render the deck to PDF and visually check every slide
-for overflow -- see PROGRESS.md for the result.
+for overflow. The install stalled past the download and never completed; this attempt was abandoned and a
+careful layout-math check (image placement, text-box capacity against character counts) was used instead.
 
 ## Second deck review round (2026-10-19): LibreOffice render on a real machine
 

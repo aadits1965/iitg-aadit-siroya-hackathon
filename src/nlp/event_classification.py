@@ -78,8 +78,8 @@ def _contains(text: str, phrase: str) -> bool:
     return _KEYWORD_PATTERNS[phrase].search(text) is not None
 
 
-# FROZEN at this version for scoring against data/eval/event_gold.csv once Aadit
-# finishes labelling it (see docs/USER_TODO.md). The rule classifier is what
+# FROZEN at this version for scoring against the hand-labelled
+# data/eval/event_gold.csv. The rule classifier is what
 # ships as the production classifier (src/nlp/engine.py's default) -- it is
 # fast, transparent, zero extra model cost, and has already been debugged
 # against real signal output (the analyst-vs-credit-event and "war"/"warns"

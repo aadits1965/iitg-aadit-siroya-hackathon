@@ -255,8 +255,8 @@ def main():
     add_bullets(s2, [
         ("X/Twitter has no free read API in 2026 → switched to Mastodon.", 0),
         ("FinBERT is fine-tuned on Financial PhraseBank → evaluated on a disjoint dataset to avoid leakage.", 0),
-        ("Entity linking: naive name match scored 30% precision (18/61) → cashtag + context rules reached "
-         "91.7% (44/48), confirmed 94.5% (52/55) on a fresh sample.", 0),
+        ("Entity linking: a naive name match collided with everyday phrases (\"Target\" in \"price target\") "
+         "→ fixed with cashtag matching + context rules.", 0),
     ], left=6.8, top=4.1, width=5.9, height=3.0, font_size=18)
 
     # Slide 3: System Design

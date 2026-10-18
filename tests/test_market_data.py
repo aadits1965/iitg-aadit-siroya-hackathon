@@ -1,7 +1,8 @@
 """Verifies the Treasury CSV parser against the REAL confirmed response format
-(see src/ingestion/market_data.py module docstring -- fetched live via WebFetch
-on 2026-10-04, since direct requests from this dev sandbox fail outright).
-No network call in this test -- requests.get is monkeypatched."""
+(see src/ingestion/market_data.py module docstring -- fetched live via an
+AI-assisted web-fetch tool on 2026-10-04, since direct requests from this dev
+sandbox fail outright). No network call in this test -- requests.get is
+monkeypatched."""
 from __future__ import annotations
 
 from datetime import date

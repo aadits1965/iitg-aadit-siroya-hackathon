@@ -1,6 +1,6 @@
 """Every third-party import under src/ or scripts/ must be pinned in
 requirements.txt -- this is what caught rapidfuzz being pinned in the file but
-missing from this dev sandbox's actual environment (see PROGRESS.md Phase 10)."""
+missing from this dev sandbox's actual environment."""
 import sys
 from pathlib import Path
 

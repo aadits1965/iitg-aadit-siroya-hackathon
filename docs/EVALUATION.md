@@ -41,7 +41,7 @@ Reproduce: `python scripts/run_sentiment_eval.py`.
 **Status: pending.** The gold label set (`data/eval/event_gold.csv`) has 110 real rows sampled from the
 373 genuinely-ingested documents (Mastodon live posts + replay tweets; see Phase 1), stratified by the rule
 baseline's own guess, but needs Aadit's hand labelling before per-class precision/recall/F1 and a confusion
-matrix can be reported (`docs/USER_TODO.md`). Reporting the rule baseline's own suggestions as if they were
+matrix can be reported. Reporting the rule baseline's own suggestions as if they were
 gold labels would be circular, so no number is reported here yet. The zero-shot classifier
 (`facebook/bart-large-mnli`) is implemented but its CPU latency has not yet been benchmarked at scale —
 deferred to the same run that scores against the finished gold set, since both need to happen together
@@ -56,9 +56,10 @@ hosts: Yahoo Finance, the US Treasury yield-curve CSV endpoint) are confirmed un
 development sandbox's shared egress IP (HTTP 429 persistently from GDELT across a full ~17-minute live run,
 HTTP 000/connection-failure from Treasury, JSON-decode failures from yfinance — see
 docs/DATA_VERIFICATION.md sections 8-9). This is an environment-specific network restriction, not a defect
-in GDELT or in the study design. (Claude's WebFetch tool *could* reach Treasury and Yahoo Finance through a
-different network path and was used to seed a single real dated snapshot for Module B — see section 9 of
-DATA_VERIFICATION.md — but WebFetch got the same GDELT 429, so this route can't solve the news side.)
+in GDELT or in the study design. (An AI-assisted web-fetch tool *could* reach Treasury and Yahoo Finance
+through a different network path and was used to seed a single real dated snapshot for Module B — see
+section 9 of DATA_VERIFICATION.md — but that same tool got the same GDELT 429, so this route can't solve
+the news side.)
 
 **Sample-size threshold, and why it's 200, not an arbitrary round number:** detecting a modest correlation
 (r≈0.2 — a plausible effect size for a single rule-based severity score against noisy daily abnormal
@@ -85,7 +86,7 @@ What **is** verified:
   `src/ingestion/pipeline.py`) specifically to get this sample size up — the core 20-ticker universe used by
   the dashboard/Module B is kept separate and unchanged (see docs/ASSUMPTIONS.md).
 
-**Next step (Aadit, see docs/USER_TODO.md for exact commands):** run `scripts/build_cache.py` from a normal
+**Next step:** run `scripts/build_cache.py` from a normal
 network, then `scripts/run_impact_event_study.py`. If n stays below 200 even with the widened universe and
 18-month GDELT window, or if the correlation turns out weak/absent at adequate power, the Impact Score will
 be re-framed everywhere (README, deck, QA prep) as a transparent rule-based severity score rather than an

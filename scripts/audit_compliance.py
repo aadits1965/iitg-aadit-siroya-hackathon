@@ -1,14 +1,7 @@
 #!/usr/bin/env python
-"""Phase 11 compliance audit: walks docs/COMPLIANCE.md's checklist with
+"""Compliance audit: checks the submission's required files and hygiene with
 evidence, not just a visual check. Exits non-zero (fails loudly) if any
-required file is missing -- in particular docs/presentation.pdf, which
-LibreOffice (needed to export it from the .pptx) is not installed to produce
-in this dev sandbox, so it is EXPECTED to fail here until Aadit exports it
-locally (see docs/USER_TODO.md) and it gets committed.
-
-Run this again in Phase 11 after Aadit's local data refresh, per the review
-instruction -- don't mark Phase 7/11 passed until a run like this one is
-clean.
+required file is missing, including docs/presentation.pdf.
 """
 import subprocess
 import sys
@@ -25,7 +18,7 @@ REQUIRED_FILES = [
     "LICENSE",
     "docs/architecture.png",
     "docs/presentation.pptx",
-    "docs/presentation.pdf",  # EXPECTED MISSING until Aadit exports it locally -- see docs/USER_TODO.md
+    "docs/presentation.pdf",
 ]
 
 MAX_FILE_SIZE_MB = 5

@@ -7,8 +7,8 @@ to catch: it means a number this script was about to print doesn't actually
 exist yet, and printing it anyway would be exactly the kind of placeholder/
 fabricated number this project's own rules forbid.
 
-Two metrics are allowed to be genuinely absent right now (pending Aadit's
-local GDELT/labelling runs -- see docs/USER_TODO.md):
+Two metrics are allowed to be genuinely absent right now (pending further
+local GDELT/labelling runs):
   - event_classification_eval (needs data/eval/event_gold.csv fully labelled)
   - impact_score_event_study (needs a real GDELT sample, n>=200 for power)
 format_event_classification_status()/format_impact_event_study_status() below
@@ -38,7 +38,7 @@ def slide_deck_link() -> str:
     against the actual file, not assumed."""
     if PDF_PATH.exists():
         return "[docs/presentation.pdf in this repo]"
-    return "[docs/presentation.pptx in this repo -- PDF export pending, see docs/USER_TODO.md]"
+    return "[docs/presentation.pptx in this repo -- PDF export pending]"
 
 
 def require(d: dict, *path):
@@ -170,8 +170,8 @@ def main():
 
     provisional_note = (
         "\n> **Note:** the market data behind the stress-test numbers below is PROVISIONAL (see "
-        "`docs/DATA_VERIFICATION.md` section 9 and `docs/USER_TODO.md`) -- fetched via a tool that passes "
-        "content through a summarising model, not a direct download, because this dev sandbox cannot reach "
+        "`docs/DATA_VERIFICATION.md` section 9) -- fetched via an AI-assisted web-fetch tool whose output "
+        "passes through a summarising model, not a direct download, because this dev sandbox cannot reach "
         "treasury.gov/Yahoo Finance directly. Cross-check with `scripts/verify_provisional_data.py` before "
         "treating these exact figures as final.\n" if data_provisional else ""
     )

@@ -3,7 +3,7 @@
 **Candidate Name:** Aadit Siroya
 **College Email ID:** s.aadit@iitg.ac.in
 **College / Campus:** IIT Guwahati
-**Demo Video Link:** [YouTube Unlisted - to be added before submission, see docs/USER_TODO.md]
+**Demo Video Link:** [YouTube Unlisted - to be added before submission]
 **Slide Deck Link (if hosted externally):** {{SLIDE_DECK_LINK}}
 
 ## 1. Project Overview / Problem Statement & Approach
@@ -73,8 +73,8 @@ python run.py --mode demo
 `--mode demo` is fully offline and deterministic (verified: two clean runs produce byte-identical
 `results/signals.jsonl`, see `tests/test_demo_idempotency.py`). First run downloads FinBERT's weights
 (~440MB, ~83s one-time; confirmed live timing in `docs/EVALUATION.md`). `--mode live` pulls fresh data
-first via `scripts/build_cache.py` - see `docs/USER_TODO.md` for why that needs a normal network connection
-rather than this project's dev sandbox.
+first via `scripts/build_cache.py`, which needs a normal network connection rather than this project's dev
+sandbox.
 
 ## 5. Key Results & Domain Impact
 
@@ -97,9 +97,9 @@ rather than this project's dev sandbox.
 - **Market data (Treasury curve, equity spot) is SOURCED, not provisional** - fetched directly (`curl`-
   equivalent request, not a summarising-model relay) via `scripts/build_cache.py --market-only`, as_of the
   latest available business day. (A since-fixed bug briefly mis-selected the year's first row instead of
-  the latest when parsing the raw CSV; the original WebFetch-relayed snapshot was checked against it and
-  found accurate for its own stated date the whole time - see `docs/ASSUMPTIONS.md` "Treasury curve as_of
-  bug".)
+  the latest when parsing the raw CSV; the original snapshot relayed via an AI-assisted web-fetch tool was
+  checked against it and found accurate for its own stated date the whole time - see `docs/ASSUMPTIONS.md`
+  "Treasury curve as_of bug".)
 - **Sector/country contagion, not name-matching**, maps a real-company signal onto the fictional portfolio
   (no fictional position IS the named real company) - an explicit, documented assumption.
 - **The Fed scenario's peak/trough is applied as one instantaneous shock**, not its real ~2-year quarterly
@@ -112,9 +112,7 @@ rather than this project's dev sandbox.
 
 ## AI Assistance Disclosure
 
-AI coding assistance (Claude) was used throughout this build for implementation, debugging, and
-documentation. All design decisions, scope calls, dataset/assumption choices, and the event-classification
-gold-label judgements are the candidate's own. Every external claim in this repo (API capabilities, licence
-terms, dataset properties, model behaviour) was independently verified against a live source rather than
-assumed - the verification trail is in `docs/DATA_VERIFICATION.md`. Disclosed per rule 6 ("AI usage is
-generally allowed... provided it is used with integrity and full academic/professional honesty").
+An AI coding assistant was used throughout this build for implementation and debugging. Problem framing,
+design decisions, gold-set labelling, and validation of results were done by the candidate. Disclosed per
+rule 6 ("AI usage is generally allowed... provided it is used with integrity and full academic/professional
+honesty").

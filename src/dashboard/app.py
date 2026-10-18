@@ -54,7 +54,7 @@ tab_feed, tab_quality, tab_stress, tab_explorer, tab_audit = st.tabs(
 with tab_feed:
     signals = load_signals()
     if not signals:
-        st.warning("No signals found. Run `python scripts/run_engine.py` first (see docs/USER_TODO.md).")
+        st.warning("No signals found. Run `python scripts/run_engine.py` first.")
     else:
         st.subheader(f"{len(signals)} signals in results/signals.jsonl")
 
@@ -185,8 +185,8 @@ with tab_quality:
         total = len(gold_df)
         st.progress(labelled / total if total else 0, text=f"Gold labels: {labelled}/{total} rows labelled")
         if labelled < total:
-            st.info("Per-class precision/recall/confusion matrix are pending until labelling is complete "
-                    "(see docs/USER_TODO.md) — reporting the rule baseline's own guesses as gold would be circular.")
+            st.info("Per-class precision/recall/confusion matrix are pending until labelling is complete — "
+                    "reporting the rule baseline's own guesses as gold would be circular.")
     else:
         st.warning("No data/eval/event_gold.csv found.")
 
@@ -319,8 +319,9 @@ with tab_stress:
 with tab_explorer:
     st.warning("🔶 **Manual scenario — not triggered by a real signal.** This tab computes a fresh "
                "revaluation live (unlike every other tab, which only reads files already written by a "
-               "script) — useful for live Q&A ('what if this were a Credit Event on the Energy sector "
-               "instead?'), but every result shown here is a manually-chosen what-if, never a real trigger.")
+               "script) — useful for exploring what-if scenarios ('what if this were a Credit Event on the "
+               "Energy sector instead?'), but every result shown here is a manually-chosen what-if, never a "
+               "real trigger.")
 
     try:
         curve = load_curve()
@@ -396,6 +397,6 @@ st.sidebar.markdown("### About")
 st.sidebar.caption(
     "AI/NLP Risk Engine prototype — S&P Global & Crisil Campus Hackathon 2026.\n\n"
     "Run with `python run.py --mode demo` (offline, deterministic) or `--mode live` "
-    "(pulls fresh data; needs a normal network — see docs/USER_TODO.md)."
+    "(pulls fresh data; needs a normal network)."
 )
 st.sidebar.caption(f"Page rendered: {datetime.now().isoformat(timespec='seconds')}")

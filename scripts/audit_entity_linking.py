@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 """Phase 4 review: samples 50 real documents that link to >=1 ticker in the
 widened 80-ticker event-study universe and writes them to
-data/eval/entity_linking_audit.csv for manual precision labelling (Claude
-labelled the committed version by reading each row -- see
-docs/DATA_VERIFICATION.md section 11 for the verdicts and the two bugs this
-audit caught: the "Target" bare-alias collision with "price target", and the
-"ups"/UPS verb collision -- both now fixed in src/nlp/entity_linking.py).
+data/eval/entity_linking_audit.csv for manual precision labelling (the AI
+assistant labelled the committed version by reading each row -- see
+docs/DATA_VERIFICATION.md section 11 for the verdicts, the provenance note,
+and the two bugs this audit caught: the "Target" bare-alias collision with
+"price target", and the "ups"/UPS verb collision -- both now fixed in
+src/nlp/entity_linking.py).
 """
 import csv
 import random

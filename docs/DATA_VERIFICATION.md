@@ -44,9 +44,9 @@ or JUDGMENT (a call made based on the facts).
     train=9,938 / validation=2,486.
   - JUDGMENT: MIT license permits redistributing a small sample in this public repo with attribution — a
     capped sample (a few hundred rows) goes in `data/raw_samples/`, with a link to the source dataset.
-  - **This is a static replay, not a live feed.** The README, deck, and `QA_PREP.md` will say this plainly —
-    it satisfies "ingest from ≥2 distinct source *types*" (news vs. social) honestly, but social ingestion is
-    not real-time in this build. Logged as a stated limitation, not hidden.
+  - **This is a static replay, not a live feed.** The README and deck say this plainly — it satisfies
+    "ingest from ≥2 distinct source *types*" (news vs. social) honestly, but social ingestion is not
+    real-time in this build. Logged as a stated limitation, not hidden.
 
 ## 4. FinBERT (`ProsusAI/finbert`) — confirmed training-data leakage risk
 
@@ -133,9 +133,9 @@ or JUDGMENT (a call made based on the facts).
   **never** be bulk-cached into `/data` for redistribution in the public repo — that would exceed the licence.
 - **Decision:**
   1. The GDELT adapter is built fully correct against GDELT's real, documented schema (confirmed above), with
-     retry/backoff on 429. It will work from a normal (non-shared, non-datacenter) network — i.e. Aadit's own
-     machine. This is logged in `docs/USER_TODO.md`: run `python scripts/build_cache.py` once from a normal
-     network connection to populate a real, redistributable `data/cache/news_gdelt.jsonl` before the demo.
+     retry/backoff on 429. It will work from a normal (non-shared, non-datacenter) network — i.e. the
+     candidate's own machine: run `python scripts/build_cache.py` once from a normal network connection to
+     populate a real, redistributable `data/cache/news_gdelt.jsonl` before the demo.
   2. Parsing/dedup logic is unit-tested against **fixture JSON shaped exactly like GDELT's real schema**
      (field names/format confirmed live above), clearly labeled as test fixtures, never presented as real
      fetched articles.
@@ -143,19 +143,20 @@ or JUDGMENT (a call made based on the facts).
      data today, so at least one channel's `data/cache/` content is genuinely live-fetched rather than only a
      fixture.
 
-## 9. Addendum (2026-10-04) — real market-data snapshot via WebFetch; Fed stress-scenario sourcing
+## 9. Addendum (2026-10-04) — real market-data snapshot via an AI-assisted web-fetch tool; Fed stress-scenario sourcing
 
 - FACT: this dev sandbox's **direct** requests calls to treasury.gov (HTTP 000, connection failure) and
   yfinance/Yahoo Finance (JSON-decode failures, consistent with a 429-style block) fail, exactly like GDELT.
-  However, **Claude's WebFetch tool reached both successfully** — a different network path than this
-  sandbox's direct outbound requests. Used to pull one real, dated snapshot: the US Treasury par yield curve
-  as of 2026-10-02 (`data/cache/market/treasury_par_yield_curve.csv`) and spot prices for SPY/AAPL/MSFT/
-  NVDA/JPM as of the same date (`data/cache/market/equity_prices.csv`), both files stamped with exactly how
-  and when they were fetched. This is real, live-verified data, not training-knowledge or fabrication — but
-  it is a single-date snapshot, not a time series, and cannot substitute for the full historical window
-  `scripts/build_cache.py` needs to build for the event study (GDELT itself still returns 429 even via
-  WebFetch, confirmed by testing it directly — this path doesn't unblock the news side).
-- FACT: the Treasury CSV's exact column format was confirmed live via WebFetch:
+  However, **an AI-assisted web-fetch tool (its output passes through a summarising model) reached both
+  successfully** — a different network path than this sandbox's direct outbound requests. Used to pull one
+  real, dated snapshot: the US Treasury par yield curve as of 2026-10-02
+  (`data/cache/market/treasury_par_yield_curve.csv`) and spot prices for SPY/AAPL/MSFT/NVDA/JPM as of the
+  same date (`data/cache/market/equity_prices.csv`), both files stamped with exactly how and when they
+  were fetched. This is real, live-verified data, not training-knowledge or fabrication — but it is a
+  single-date snapshot, not a time series, and cannot substitute for the full historical window
+  `scripts/build_cache.py` needs to build for the event study (GDELT itself still returns 429 through this
+  same tool, confirmed by testing it directly — this path doesn't unblock the news side).
+- FACT: the Treasury CSV's exact column format was confirmed live via this tool:
   `Date,"1 Mo","1.5 Month","2 Mo","3 Mo","4 Mo","6 Mo","1 Yr","2 Yr","3 Yr","5 Yr","7 Yr","10 Yr","20 Yr","30 Yr"`,
   `MM/DD/YYYY` date format. `src/ingestion/market_data.py`'s parser is built against this confirmed format
   and unit-tested against it verbatim (`tests/test_market_data.py`, 2/2 passing) rather than guessed.
@@ -171,9 +172,10 @@ or JUDGMENT (a call made based on the facts).
 
 - FACT: `federalreserve.gov` is reachable with a **direct** `curl`/`requests` call from this dev machine
   (HTTP 200) — unlike `treasury.gov` (HTTP 000) and Yahoo Finance (429/JSON errors). This means the earlier
-  Fed-scenario figures, originally obtained via Claude's WebFetch tool (which passes content through a
-  summarising model), have now been **re-extracted directly**: `curl` the real HTML page, then parse its
-  embedded `<table>` elements with a plain regex/HTML strip — no summarising model in the loop at all.
+  Fed-scenario figures, originally obtained via the AI-assisted web-fetch tool (which passes content
+  through a summarising model), have now been **re-extracted directly**: `curl` the real HTML page, then
+  parse its embedded `<table>` elements with a plain regex/HTML strip — no summarising model in the loop at
+  all.
 - FACT: the page embeds the Federal Reserve's actual quarter-by-quarter severely-adverse domestic scenario
   table (`Date, Real GDP growth, Nominal GDP growth, Real/Nominal disposable income growth, Unemployment
   rate, CPI inflation, 3-month Treasury rate, 5-year Treasury yield, 10-year Treasury yield, BBB corporate
@@ -192,7 +194,7 @@ or JUDGMENT (a call made based on the facts).
   myself) the exact figures the Board's prose states separately ("VIX... peak of 72 percent in the second
   quarter", "spread... reaching a level of 5.7 percentage points", 10-yr "to 2.3 percent... by the fourth
   quarter of 2026") — the prose and the raw table agree exactly, which is strong corroboration the earlier
-  WebFetch-summarised figures were accurate, but this raw-table extraction is now the citation used in
+  tool-summarised figures were accurate, but this raw-table extraction is now the citation used in
   `config/scenarios.yaml`, not the earlier summary.
 - FACT: the **baseline** (non-stress) scenario's own table gives a real, sourced pre-stress VIX figure —
   23.4 at Q1 2026 — used as `vix_baseline` in the "fed_severely_adverse" and "geopolitical_rate_shock"
@@ -202,16 +204,26 @@ or JUDGMENT (a call made based on the facts).
   the HTML table already gives the authoritative raw figures directly.
 - **This Fed-scenario data is SOURCED, not PROVISIONAL** (direct download, no summarising model). The
   Treasury par-yield curve and the five equity spot prices in `data/cache/market/` remain **PROVISIONAL**
-  (WebFetch-sourced, summarising model in the loop) — those are marked with `provisional: true` in their
+  (fetched via the AI-assisted web-fetch tool, summarising model in the loop) — those are marked with
+  `provisional: true` in their
   file headers and `YieldCurve.is_provisional` is checked and surfaced by `scripts/run_stress_test.py`.
   `scripts/verify_provisional_data.py` cross-checks them against a direct download once run from a normal
   network; nothing from them should be treated as deck-ready until that check passes.
 
 ## 11. Addendum (2026-10-04, post-Phase-4 review) — entity-linking precision audit
 
+**Provenance note, stated plainly: every TP/FP judgment in this section (and in section 13 below) was made
+by the AI assistant reading each headline, not independently verified by the candidate.** This is different
+from the event-classification gold set (`data/eval/event_gold.csv`), which the candidate hand-labelled
+blind himself (see "Gold-set contamination found and fixed" below) — the entity-linking numbers here are an
+AI-generated measurement of the AI's own code fix, useful as a documented, mechanically-reproducible check
+of the fix's direction and rough magnitude, but not a human-verified precision figure. For that reason
+these specific numbers (30% / 91.7% / 94.5%) are not presented in the deck or README as a candidate-
+verified result — they're kept here, with this note, for full transparency about how they were produced.
+
 Requested check: sample 50 real, wide-universe-linked headlines and measure precision.
-`scripts/audit_entity_linking.py` draws the sample (seed 42); Claude read every row's text and judged
-TP/FP by hand; the labelled sample is committed at `data/eval/entity_linking_audit.csv`.
+`scripts/audit_entity_linking.py` draws the sample (seed 42); the AI assistant read every row's text and
+judged TP/FP by hand; the labelled sample is committed at `data/eval/entity_linking_audit.csv`.
 
 **Before any fix:** an earlier, informal pass over a larger (171-doc) linked pool found precision around
 **30%** (18 correct / 61 total ticker matches), dominated by two bugs:
@@ -358,7 +370,8 @@ market.
 **Re-checked directly, per tenor, against the correct 2026-10-02 row from a fresh direct fetch:** every
 one of the 12 published tenors (1Mo through 30Yr) matches the provisional snapshot **exactly, 0bp
 difference at every point** (full table in `docs/ASSUMPTIONS.md`, "Treasury curve `as_of` bug"). The
-provisional WebFetch-relayed snapshot was accurate for its stated date the entire time.
+provisional snapshot, relayed via the AI-assisted web-fetch tool, was accurate for its stated date the
+entire time.
 
 **Fix:** `fetch_treasury_curve()` now parses every row's date and selects the maximum, regardless of file
 order. Re-fetched: `as_of: 2026-10-16` (the genuinely latest available business day, 199 rows parsed). 3
@@ -381,4 +394,4 @@ against this specific bug recurring.
 - Equities: yfinance.
 - **Known dev-environment constraint:** GDELT and several publisher RSS feeds return 429/403 from this
   sandbox's shared egress IP. Code is written against GDELT's confirmed-real schema either way; a one-time
-  cache-build run from a normal network is required before the demo (see docs/USER_TODO.md).
+  cache-build run from a normal network is required before the demo.

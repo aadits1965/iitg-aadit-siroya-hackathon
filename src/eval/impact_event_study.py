@@ -12,7 +12,7 @@ close returns. Report Spearman correlation between Impact Score and |AR| with
 a bootstrap 95% CI, plus mean |AR| by impact decile. This is an association
 test, not a causal claim -- confounders (earnings dates, market-wide moves,
 multiple news items per day) are not controlled for and are stated as
-limitations wherever this result is reported (README/deck/QA_PREP).
+limitations wherever this result is reported (README/deck).
 """
 from __future__ import annotations
 

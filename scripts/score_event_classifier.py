@@ -70,7 +70,7 @@ def main():
     unlabelled = gold_df["gold_label"].isna().sum()
     if unlabelled > 0:
         print(f"REFUSING TO SCORE: {unlabelled} / {len(gold_df)} rows in {GOLD_PATH} are not yet labelled.")
-        print("Run `python scripts/label_events.py` to finish labelling first -- see docs/USER_TODO.md.")
+        print("Run `python scripts/label_events.py` to finish labelling first.")
         print("Nothing was written to results/metrics.json.")
         sys.exit(1)
 
