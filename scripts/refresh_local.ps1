@@ -12,15 +12,26 @@
   need (JPM, NVDA), then re-runs Module B and regenerates every number-bearing
   doc from the result.
 
-  Each step checks its own exit code and stops the whole script immediately on
-  failure -- never pushes a half-finished refresh.
+  Each step checks its own exit code ($LASTEXITCODE) right after the call and
+  stops the whole script immediately on failure -- never pushes a half-
+  finished refresh.
+
+  Windows PowerShell 5.1 compatible. Every `python` call below is written out
+  explicitly on its own line with literal arguments (no splatting, no `-Args`
+  parameter name, no backtick line-continuation) -- an earlier version of this
+  script used a helper function with a parameter named `$Args`, which collides
+  with PowerShell's automatic `$args` variable, combined with backtick
+  continuation across lines. On at least one real machine that combination
+  silently dropped the arguments, so `python` launched with none and opened an
+  interactive REPL instead of running build_cache.py. Fixed by removing both
+  the shared parameter name and the line continuations entirely.
 
 .PARAMETER CommitMessage
   Optional. Defaults to a timestamped "chore: local market-data refresh" message.
 
 .PARAMETER SkipPush
   Optional switch. Commits locally but does not push -- use this if you want to
-  review `git log`/`git diff` before pushing yourself.
+  review git log/git diff before pushing yourself.
 
 .EXAMPLE
   .\scripts\refresh_local.ps1
@@ -36,33 +47,37 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
 
-function Invoke-Step {
-    param([string]$Description, [string[]]$Args)
-    Write-Host "`n=== $Description ===" -ForegroundColor Cyan
-    & python @Args
+function Confirm-StepSucceeded {
+    param([string]$Description)
     if ($LASTEXITCODE -ne 0) {
         Write-Host "FAILED: $Description (exit $LASTEXITCODE) -- stopping, nothing pushed." -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
 
-Invoke-Step "1/6 Market-only data fetch (Treasury curve direct, FRED, JPM/NVDA spot)" `
-    @("scripts/build_cache.py", "--market-only")
+Write-Host "`n=== 1/6 Market-only data fetch (Treasury curve direct, FRED, JPM/NVDA spot) ===" -ForegroundColor Cyan
+& python scripts/build_cache.py --market-only
+Confirm-StepSucceeded "1/6 Market-only data fetch"
 
-Invoke-Step "2/6 Re-run Module B stress test on existing results/signals.jsonl" `
-    @("scripts/run_stress_test.py")
+Write-Host "`n=== 2/6 Re-run Module B stress test on existing results/signals.jsonl ===" -ForegroundColor Cyan
+& python scripts/run_stress_test.py
+Confirm-StepSucceeded "2/6 Re-run Module B stress test"
 
-Invoke-Step "3/6 Regenerate README.md" `
-    @("scripts/generate_readme.py")
+Write-Host "`n=== 3/6 Regenerate README.md ===" -ForegroundColor Cyan
+& python scripts/generate_readme.py
+Confirm-StepSucceeded "3/6 Regenerate README.md"
 
-Invoke-Step "4/6 Regenerate deck charts" `
-    @("scripts/generate_deck_charts.py")
+Write-Host "`n=== 4/6 Regenerate deck charts ===" -ForegroundColor Cyan
+& python scripts/generate_deck_charts.py
+Confirm-StepSucceeded "4/6 Regenerate deck charts"
 
-Invoke-Step "5/6 Regenerate docs/presentation.pptx" `
-    @("scripts/generate_deck.py")
+Write-Host "`n=== 5/6 Regenerate docs/presentation.pptx ===" -ForegroundColor Cyan
+& python scripts/generate_deck.py
+Confirm-StepSucceeded "5/6 Regenerate docs/presentation.pptx"
 
-Invoke-Step "6/6 Run the full test suite" `
-    @("-m", "pytest", "tests/", "-q")
+Write-Host "`n=== 6/6 Run the full test suite ===" -ForegroundColor Cyan
+& python -m pytest tests/ -q
+Confirm-StepSucceeded "6/6 Run the full test suite"
 
 Write-Host "`n=== Compliance audit (informational -- does not block commit/push) ===" -ForegroundColor Cyan
 & python scripts/audit_compliance.py
@@ -71,17 +86,23 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "`n=== git add/commit ===" -ForegroundColor Cyan
-git add -A
-if ($LASTEXITCODE -ne 0) { Write-Host "git add failed." -ForegroundColor Red; exit $LASTEXITCODE }
+& git add -A
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "git add failed." -ForegroundColor Red
+    exit $LASTEXITCODE
+}
 
-git diff --cached --quiet
+& git diff --cached --quiet
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Nothing to commit -- working tree matches HEAD after the refresh." -ForegroundColor Yellow
     exit 0
 }
 
-git commit -m $CommitMessage
-if ($LASTEXITCODE -ne 0) { Write-Host "git commit failed." -ForegroundColor Red; exit $LASTEXITCODE }
+& git commit -m $CommitMessage
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "git commit failed." -ForegroundColor Red
+    exit $LASTEXITCODE
+}
 
 if ($SkipPush) {
     Write-Host "`n-SkipPush set -- committed locally, not pushed. Run 'git push origin master' when ready." -ForegroundColor Yellow
@@ -89,7 +110,10 @@ if ($SkipPush) {
 }
 
 Write-Host "`n=== git push origin master ===" -ForegroundColor Cyan
-git push origin master
-if ($LASTEXITCODE -ne 0) { Write-Host "git push failed." -ForegroundColor Red; exit $LASTEXITCODE }
+& git push origin master
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "git push failed." -ForegroundColor Red
+    exit $LASTEXITCODE
+}
 
 Write-Host "`nDone -- refreshed, committed, and pushed." -ForegroundColor Green
