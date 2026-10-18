@@ -226,8 +226,9 @@ def main():
         "Market data (Treasury curve, equity spot) is PROVISIONAL in this build — fetched via a tool with a "
         "summarising model in the loop, not a direct download; a verification script exists to cross-check it."
         if data_provisional else
-        "Market data (Treasury curve, equity spot) is SOURCED, not provisional — fetched directly. An earlier "
-        "WebFetch-relayed snapshot was off by 38-141bp at every tenor (transcription error) and was replaced."
+        "Market data (Treasury curve, equity spot) is SOURCED, not provisional — fetched directly. (An "
+        "earlier as_of-selection bug briefly mis-dated the curve; the provisional snapshot itself was "
+        "always accurate for its stated date — see docs/ASSUMPTIONS.md.)"
     )
     add_bullets(s7, [
         (format_impact_event_study_status(metrics).replace("**", ""), 0),

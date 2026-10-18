@@ -1,8 +1,8 @@
 {
   "data_provisional": false,
   "data_provisional_warning": null,
-  "curve_as_of": "2026-01-02",
-  "curve_source": "US Treasury daily par yield curve (home.treasury.gov), fetched directly via scripts/build_cache.py on 2026-10-18 | raw source row: 01/02/2026,3.72,3.71,3.66,3.65,3.62,3.58,3.47,3.47,3.55,3.74,3.95,4.19,4.81,4.86",
+  "curve_as_of": "2026-10-16",
+  "curve_source": "US Treasury daily par yield curve (home.treasury.gov), fetched directly via scripts/build_cache.py on 2026-10-18 | raw source row: 10/16/2026,4.12,4.14,4.17,4.26,4.32,4.34,4.46,4.74,4.82,4.89,4.98,5.09,5.47,5.43",
   "n_signals_evaluated": 76,
   "n_fired": 3,
   "excluded_positions": [],
@@ -13,31 +13,31 @@
       "tier": "fed_severely_adverse",
       "narrative": "Broad-based U.S. recession (the Fed's own 2026 severely-adverse design): GDP contracts and unemployment rises to 10%, triggering a flight-to-quality that pushes long Treasury yields DOWN even as credit spreads and equity volatility spike and equities sell off sharply.",
       "scope": "portfolio_wide",
-      "total_value_before": 667925506.99,
-      "total_value_after": 651855012.24,
-      "mtm_pnl": -974415.36,
+      "total_value_before": 658497131.71,
+      "total_value_after": 644703574.97,
+      "mtm_pnl": 1302522.65,
       "credit_loss_on_loans": 15096079.39,
-      "total_stressed_loss": -16070494.75,
-      "total_stressed_loss_pct": -2.406,
+      "total_stressed_loss": -13793556.74,
+      "total_stressed_loss_pct": -2.0947,
       "total_el_before_all_positions_memo_only": 10110091.7,
       "total_el_after_all_positions_memo_only": 30330275.1,
       "pnl_by_asset_class": {
         "loan": -15096079.39,
-        "bond": -29834166.01,
-        "option": 43478277.17,
-        "swap": -4484130.52,
+        "bond": -27574415.57,
+        "option": 43162632.13,
+        "swap": -4151297.91,
         "fx_forward": -10134396.0
       },
       "pnl_by_sector": {
-        "Energy": 9151684.21,
-        "Consumer": -14965548.92,
-        "Industrials": 7623061.28,
-        "Healthcare": -7364265.13,
-        "Financials": -3393467.29,
-        "Real Estate": 12474890.6,
-        "Telecom": -2457349.45,
-        "Technology": -10181491.7,
-        "Sovereign": -6958008.36
+        "Energy": 9192021.2,
+        "Consumer": -14182118.62,
+        "Industrials": 7877511.95,
+        "Healthcare": -7003892.72,
+        "Financials": -3318383.88,
+        "Real Estate": 12329207.55,
+        "Telecom": -2481031.99,
+        "Technology": -9827710.04,
+        "Sovereign": -6379160.18
       },
       "top_10_contributors": [
         {
@@ -58,27 +58,27 @@
         },
         {
           "position_id": "BOND012",
-          "pnl": -4014565.93
+          "pnl": -3689434.42
         },
         {
           "position_id": "DERIV002",
-          "pnl": -3755574.59
+          "pnl": -3535537.72
         },
         {
           "position_id": "DERIV009",
-          "pnl": -3641056.9
+          "pnl": -3385060.67
         },
         {
           "position_id": "BOND006",
-          "pnl": -2982195.53
-        },
-        {
-          "position_id": "BOND011",
-          "pnl": -2802220.8
+          "pnl": -2735832.14
         },
         {
           "position_id": "BOND002",
-          "pnl": -2736443.61
+          "pnl": -2582761.22
+        },
+        {
+          "position_id": "BOND011",
+          "pnl": -2577503.68
         }
       ],
       "signal_id": "sig_3e2f9d02a30ab82b",
@@ -109,31 +109,31 @@
       "tier": "fed_severely_adverse",
       "narrative": "Broad-based U.S. recession (the Fed's own 2026 severely-adverse design): GDP contracts and unemployment rises to 10%, triggering a flight-to-quality that pushes long Treasury yields DOWN even as credit spreads and equity volatility spike and equities sell off sharply.",
       "scope": "portfolio_wide",
-      "total_value_before": 667925506.99,
-      "total_value_after": 651855012.24,
-      "mtm_pnl": -974415.36,
+      "total_value_before": 658497131.71,
+      "total_value_after": 644703574.97,
+      "mtm_pnl": 1302522.65,
       "credit_loss_on_loans": 15096079.39,
-      "total_stressed_loss": -16070494.75,
-      "total_stressed_loss_pct": -2.406,
+      "total_stressed_loss": -13793556.74,
+      "total_stressed_loss_pct": -2.0947,
       "total_el_before_all_positions_memo_only": 10110091.7,
       "total_el_after_all_positions_memo_only": 30330275.1,
       "pnl_by_asset_class": {
         "loan": -15096079.39,
-        "bond": -29834166.01,
-        "option": 43478277.17,
-        "swap": -4484130.52,
+        "bond": -27574415.57,
+        "option": 43162632.13,
+        "swap": -4151297.91,
         "fx_forward": -10134396.0
       },
       "pnl_by_sector": {
-        "Energy": 9151684.21,
-        "Consumer": -14965548.92,
-        "Industrials": 7623061.28,
-        "Healthcare": -7364265.13,
-        "Financials": -3393467.29,
-        "Real Estate": 12474890.6,
-        "Telecom": -2457349.45,
-        "Technology": -10181491.7,
-        "Sovereign": -6958008.36
+        "Energy": 9192021.2,
+        "Consumer": -14182118.62,
+        "Industrials": 7877511.95,
+        "Healthcare": -7003892.72,
+        "Financials": -3318383.88,
+        "Real Estate": 12329207.55,
+        "Telecom": -2481031.99,
+        "Technology": -9827710.04,
+        "Sovereign": -6379160.18
       },
       "top_10_contributors": [
         {
@@ -154,27 +154,27 @@
         },
         {
           "position_id": "BOND012",
-          "pnl": -4014565.93
+          "pnl": -3689434.42
         },
         {
           "position_id": "DERIV002",
-          "pnl": -3755574.59
+          "pnl": -3535537.72
         },
         {
           "position_id": "DERIV009",
-          "pnl": -3641056.9
+          "pnl": -3385060.67
         },
         {
           "position_id": "BOND006",
-          "pnl": -2982195.53
-        },
-        {
-          "position_id": "BOND011",
-          "pnl": -2802220.8
+          "pnl": -2735832.14
         },
         {
           "position_id": "BOND002",
-          "pnl": -2736443.61
+          "pnl": -2582761.22
+        },
+        {
+          "position_id": "BOND011",
+          "pnl": -2577503.68
         }
       ],
       "signal_id": "sig_afacc39e51bab7f3",
@@ -204,31 +204,31 @@
       "tier": "fed_severely_adverse",
       "narrative": "Broad-based U.S. recession (the Fed's own 2026 severely-adverse design): GDP contracts and unemployment rises to 10%, triggering a flight-to-quality that pushes long Treasury yields DOWN even as credit spreads and equity volatility spike and equities sell off sharply.",
       "scope": "portfolio_wide",
-      "total_value_before": 667925506.99,
-      "total_value_after": 651855012.24,
-      "mtm_pnl": -974415.36,
+      "total_value_before": 658497131.71,
+      "total_value_after": 644703574.97,
+      "mtm_pnl": 1302522.65,
       "credit_loss_on_loans": 15096079.39,
-      "total_stressed_loss": -16070494.75,
-      "total_stressed_loss_pct": -2.406,
+      "total_stressed_loss": -13793556.74,
+      "total_stressed_loss_pct": -2.0947,
       "total_el_before_all_positions_memo_only": 10110091.7,
       "total_el_after_all_positions_memo_only": 30330275.1,
       "pnl_by_asset_class": {
         "loan": -15096079.39,
-        "bond": -29834166.01,
-        "option": 43478277.17,
-        "swap": -4484130.52,
+        "bond": -27574415.57,
+        "option": 43162632.13,
+        "swap": -4151297.91,
         "fx_forward": -10134396.0
       },
       "pnl_by_sector": {
-        "Energy": 9151684.21,
-        "Consumer": -14965548.92,
-        "Industrials": 7623061.28,
-        "Healthcare": -7364265.13,
-        "Financials": -3393467.29,
-        "Real Estate": 12474890.6,
-        "Telecom": -2457349.45,
-        "Technology": -10181491.7,
-        "Sovereign": -6958008.36
+        "Energy": 9192021.2,
+        "Consumer": -14182118.62,
+        "Industrials": 7877511.95,
+        "Healthcare": -7003892.72,
+        "Financials": -3318383.88,
+        "Real Estate": 12329207.55,
+        "Telecom": -2481031.99,
+        "Technology": -9827710.04,
+        "Sovereign": -6379160.18
       },
       "top_10_contributors": [
         {
@@ -249,27 +249,27 @@
         },
         {
           "position_id": "BOND012",
-          "pnl": -4014565.93
+          "pnl": -3689434.42
         },
         {
           "position_id": "DERIV002",
-          "pnl": -3755574.59
+          "pnl": -3535537.72
         },
         {
           "position_id": "DERIV009",
-          "pnl": -3641056.9
+          "pnl": -3385060.67
         },
         {
           "position_id": "BOND006",
-          "pnl": -2982195.53
-        },
-        {
-          "position_id": "BOND011",
-          "pnl": -2802220.8
+          "pnl": -2735832.14
         },
         {
           "position_id": "BOND002",
-          "pnl": -2736443.61
+          "pnl": -2582761.22
+        },
+        {
+          "position_id": "BOND011",
+          "pnl": -2577503.68
         }
       ],
       "signal_id": "sig_bf3a0340e01aeb08",
@@ -300,31 +300,31 @@
     "tier": "fed_severely_adverse",
     "narrative": "Broad-based U.S. recession (the Fed's own 2026 severely-adverse design): GDP contracts and unemployment rises to 10%, triggering a flight-to-quality that pushes long Treasury yields DOWN even as credit spreads and equity volatility spike and equities sell off sharply.",
     "scope": "portfolio_wide",
-    "total_value_before": 667925506.99,
-    "total_value_after": 651855012.24,
-    "mtm_pnl": -974415.36,
+    "total_value_before": 658497131.71,
+    "total_value_after": 644703574.97,
+    "mtm_pnl": 1302522.65,
     "credit_loss_on_loans": 15096079.39,
-    "total_stressed_loss": -16070494.75,
-    "total_stressed_loss_pct": -2.406,
+    "total_stressed_loss": -13793556.74,
+    "total_stressed_loss_pct": -2.0947,
     "total_el_before_all_positions_memo_only": 10110091.7,
     "total_el_after_all_positions_memo_only": 30330275.1,
     "pnl_by_asset_class": {
       "loan": -15096079.39,
-      "bond": -29834166.01,
-      "option": 43478277.17,
-      "swap": -4484130.52,
+      "bond": -27574415.57,
+      "option": 43162632.13,
+      "swap": -4151297.91,
       "fx_forward": -10134396.0
     },
     "pnl_by_sector": {
-      "Energy": 9151684.21,
-      "Consumer": -14965548.92,
-      "Industrials": 7623061.28,
-      "Healthcare": -7364265.13,
-      "Financials": -3393467.29,
-      "Real Estate": 12474890.6,
-      "Telecom": -2457349.45,
-      "Technology": -10181491.7,
-      "Sovereign": -6958008.36
+      "Energy": 9192021.2,
+      "Consumer": -14182118.62,
+      "Industrials": 7877511.95,
+      "Healthcare": -7003892.72,
+      "Financials": -3318383.88,
+      "Real Estate": 12329207.55,
+      "Telecom": -2481031.99,
+      "Technology": -9827710.04,
+      "Sovereign": -6379160.18
     },
     "top_10_contributors": [
       {
@@ -345,27 +345,27 @@
       },
       {
         "position_id": "BOND012",
-        "pnl": -4014565.93
+        "pnl": -3689434.42
       },
       {
         "position_id": "DERIV002",
-        "pnl": -3755574.59
+        "pnl": -3535537.72
       },
       {
         "position_id": "DERIV009",
-        "pnl": -3641056.9
+        "pnl": -3385060.67
       },
       {
         "position_id": "BOND006",
-        "pnl": -2982195.53
-      },
-      {
-        "position_id": "BOND011",
-        "pnl": -2802220.8
+        "pnl": -2735832.14
       },
       {
         "position_id": "BOND002",
-        "pnl": -2736443.61
+        "pnl": -2582761.22
+      },
+      {
+        "position_id": "BOND011",
+        "pnl": -2577503.68
       }
     ],
     "signal_id": "sig_3e2f9d02a30ab82b",
@@ -396,31 +396,31 @@
     "tier": "fed_severely_adverse",
     "narrative": "Broad-based U.S. recession (the Fed's own 2026 severely-adverse design): GDP contracts and unemployment rises to 10%, triggering a flight-to-quality that pushes long Treasury yields DOWN even as credit spreads and equity volatility spike and equities sell off sharply.",
     "scope": "portfolio_wide",
-    "total_value_before": 667925506.99,
-    "total_value_after": 651855012.24,
-    "mtm_pnl": -974415.36,
+    "total_value_before": 658497131.71,
+    "total_value_after": 644703574.97,
+    "mtm_pnl": 1302522.65,
     "credit_loss_on_loans": 15096079.39,
-    "total_stressed_loss": -16070494.75,
-    "total_stressed_loss_pct": -2.406,
+    "total_stressed_loss": -13793556.74,
+    "total_stressed_loss_pct": -2.0947,
     "total_el_before_all_positions_memo_only": 10110091.7,
     "total_el_after_all_positions_memo_only": 30330275.1,
     "pnl_by_asset_class": {
       "loan": -15096079.39,
-      "bond": -29834166.01,
-      "option": 43478277.17,
-      "swap": -4484130.52,
+      "bond": -27574415.57,
+      "option": 43162632.13,
+      "swap": -4151297.91,
       "fx_forward": -10134396.0
     },
     "pnl_by_sector": {
-      "Energy": 9151684.21,
-      "Consumer": -14965548.92,
-      "Industrials": 7623061.28,
-      "Healthcare": -7364265.13,
-      "Financials": -3393467.29,
-      "Real Estate": 12474890.6,
-      "Telecom": -2457349.45,
-      "Technology": -10181491.7,
-      "Sovereign": -6958008.36
+      "Energy": 9192021.2,
+      "Consumer": -14182118.62,
+      "Industrials": 7877511.95,
+      "Healthcare": -7003892.72,
+      "Financials": -3318383.88,
+      "Real Estate": 12329207.55,
+      "Telecom": -2481031.99,
+      "Technology": -9827710.04,
+      "Sovereign": -6379160.18
     },
     "top_10_contributors": [
       {
@@ -441,27 +441,27 @@
       },
       {
         "position_id": "BOND012",
-        "pnl": -4014565.93
+        "pnl": -3689434.42
       },
       {
         "position_id": "DERIV002",
-        "pnl": -3755574.59
+        "pnl": -3535537.72
       },
       {
         "position_id": "DERIV009",
-        "pnl": -3641056.9
+        "pnl": -3385060.67
       },
       {
         "position_id": "BOND006",
-        "pnl": -2982195.53
-      },
-      {
-        "position_id": "BOND011",
-        "pnl": -2802220.8
+        "pnl": -2735832.14
       },
       {
         "position_id": "BOND002",
-        "pnl": -2736443.61
+        "pnl": -2582761.22
+      },
+      {
+        "position_id": "BOND011",
+        "pnl": -2577503.68
       }
     ]
   },
@@ -471,33 +471,33 @@
       "comparisons": [
         {
           "shock": "+10bp",
-          "full_reprice": 13480047.2874,
-          "naive_duration_only": 13479897.5466,
-          "error": -149.7408
+          "full_reprice": 12825682.4635,
+          "naive_duration_only": 12825542.2061,
+          "error": -140.2574
         },
         {
           "shock": "+50bp",
-          "full_reprice": 13249131.2505,
-          "naive_duration_only": 13245415.9758,
-          "error": -3715.2747
+          "full_reprice": 12607953.9433,
+          "naive_duration_only": 12604473.8099,
+          "error": -3480.1333
         },
         {
           "shock": "+100bp",
-          "full_reprice": 12967036.081,
-          "naive_duration_only": 12952314.0124,
-          "error": -14722.0686
+          "full_reprice": 12341929.3799,
+          "naive_duration_only": 12328138.3147,
+          "error": -13791.0652
         },
         {
           "shock": "+200bp",
-          "full_reprice": 12423911.5867,
-          "naive_duration_only": 12366110.0855,
-          "error": -57801.5011
+          "full_reprice": 11829619.4243,
+          "naive_duration_only": 11775467.3243,
+          "error": -54152.1
         },
         {
           "shock": "-200bp",
-          "full_reprice": 14773283.4222,
-          "naive_duration_only": 14710925.793,
-          "error": -62357.6293
+          "full_reprice": 14044545.5571,
+          "naive_duration_only": 13986151.2861,
+          "error": -58394.271
         }
       ]
     },
@@ -506,33 +506,33 @@
       "comparisons": [
         {
           "shock": "-5% spot",
-          "full_reprice": 39.2744,
-          "naive_delta_only": 38.9158,
-          "error": -0.3587
+          "full_reprice": 37.2283,
+          "naive_delta_only": 36.8758,
+          "error": -0.3525
         },
         {
           "shock": "-20% spot",
-          "full_reprice": 60.2759,
-          "naive_delta_only": 53.8966,
-          "error": -6.3793
+          "full_reprice": 57.5761,
+          "naive_delta_only": 51.2772,
+          "error": -6.2989
         },
         {
           "shock": "-40% spot",
-          "full_reprice": 102.3272,
-          "naive_delta_only": 73.871,
-          "error": -28.4561
+          "full_reprice": 98.777,
+          "naive_delta_only": 70.4791,
+          "error": -28.2979
         },
         {
           "shock": "+5% spot",
-          "full_reprice": 29.261,
-          "naive_delta_only": 28.9286,
-          "error": -0.3325
+          "full_reprice": 27.6007,
+          "naive_delta_only": 27.2748,
+          "error": -0.3259
         },
         {
           "shock": "+20% spot",
-          "full_reprice": 18.6824,
-          "naive_delta_only": 13.9478,
-          "error": -4.7346
+          "full_reprice": 17.4994,
+          "naive_delta_only": 12.8734,
+          "error": -4.626
         }
       ],
       "note": null

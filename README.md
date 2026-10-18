@@ -49,8 +49,8 @@ generation).
 | GDELT DOC 2.0 | Public news headlines | CC0 | 0 articles | **Abandoned for this submission** - HTTP 429 (rate-limited) on every query for 2+ hours on 2026-10-18; see `docs/ASSUMPTIONS.md` "Impact-score event study: not run" |
 | Mastodon public hashtag timelines | Live social posts | Public API, no auth | 73 real posts cached | Confirmed working live; see `docs/DATA_VERIFICATION.md` section 8 |
 | `zeroshot/twitter-financial-news-sentiment` (Hugging Face) | Historical tweet replay (offline fallback) | MIT | 300 rows cached | No real timestamps - synthetic, flagged in every row; excluded from the event study |
-| US Treasury daily par yield curve | Market data | Public domain | 1 dated snapshot | SOURCED directly (not provisional) - fetched via `scripts/build_cache.py --market-only` on 2026-10-18; see `docs/ASSUMPTIONS.md` "Market data: provisional snapshot replaced with a direct fetch" |
-| Yahoo Finance (`yfinance` 1.7.0) | Equity spot prices | Public | 2 tickers (JPM, NVDA - the only Module B option underlyings) + SPY | SOURCED directly, not provisional - same 2026-10-18 fetch |
+| US Treasury daily par yield curve | Market data | Public domain | 1 dated snapshot (latest business day) | SOURCED directly (not provisional) - fetched via `scripts/build_cache.py --market-only`; see `docs/ASSUMPTIONS.md` "Treasury curve as_of bug" |
+| Yahoo Finance (`yfinance` 1.7.0) | Equity spot prices | Public | 2 tickers (JPM, NVDA - the only Module B option underlyings) + SPY | SOURCED directly, not provisional - same fetch |
 | Federal Reserve severely-adverse stress scenario | Macro shock magnitudes | Public | 1 scenario table | SOURCED directly (not provisional) - see `docs/DATA_VERIFICATION.md` section 10 |
 
 All data and assumptions (rating-to-PD mapping, shock library magnitudes, the EL horizon choice, the
@@ -90,15 +90,15 @@ rather than this project's dev sandbox.
 FinBERT's macro-F1 CI does not overlap either baseline's. Inference measured at 138.5ms/doc on CPU.
 
 **Module B stress test** (real portfolio: 50 positions, ~$992M notional)
-76 real signals evaluated, 3 fired a stress test. Curve as-of 2026-01-02.
+76 real signals evaluated, 3 fired a stress test. Curve as-of 2026-10-16.
 
 Highest-impact real trigger: *US stock futures slip ahead of #inflation report - #stocks...* (`Macroeconomic`, tier `fed_severely_adverse`).
-- Portfolio value: $667,925,507 -> $651,855,012
-- MTM P&L (bonds/swaps/options/FX): $-974,415
+- Portfolio value: $658,497,132 -> $644,703,575
+- MTM P&L (bonds/swaps/options/FX): $1,302,523
 - Credit loss (loans, delta-EL): $15,096,079
-- **Total stressed loss: $-16,070,495 (-2.41%)**
+- **Total stressed loss: $-13,793,557 (-2.09%)**
 
-**Full reprice vs naive approximation** (required comparison, both measured on real portfolio positions): bond duration-only error grows to -62,358 at -200bp vs. a full cashflow reprice; option delta-only error grows to -28.46 at -40% spot vs. a full Black-Scholes reprice -- both confirm genuine, growing convexity/gamma error (see `tests/test_naive_approx.py`).
+**Full reprice vs naive approximation** (required comparison, both measured on real portfolio positions): bond duration-only error grows to -58,394 at -200bp vs. a full cashflow reprice; option delta-only error grows to -28.30 at -40% spot vs. a full Black-Scholes reprice -- both confirm genuine, growing convexity/gamma error (see `tests/test_naive_approx.py`).
 
 **Why it matters:** a risk/ratings team reading thousands of headlines a day cannot manually translate each one into a portfolio impact. This pipeline shows that translation happening end to end -- from raw text to a dollar P&L number, with the mark-to-market and credit-loss channels kept separate so neither number silently double-counts the other.
 
@@ -123,10 +123,11 @@ Highest-impact real trigger: *US stock futures slip ahead of #inflation report -
   this project's 2026 setting, creating a real temporal mismatch against the portfolio's 2026-10-02 market
   snapshot. Documented plainly, never presented as a real-time read (`docs/ASSUMPTIONS.md`).
 - **Market data (Treasury curve, equity spot) is SOURCED, not provisional** - fetched directly (`curl`-
-  equivalent request, not a summarising-model relay) via `scripts/build_cache.py --market-only` on
-  2026-10-18. An earlier WebFetch-relayed snapshot in this submission had been off by 38-141bp at every
-  tenor (a transcription error, not date drift) and has been replaced; see `docs/ASSUMPTIONS.md` "Market
-  data: provisional snapshot replaced with a direct fetch".
+  equivalent request, not a summarising-model relay) via `scripts/build_cache.py --market-only`, as_of the
+  latest available business day. (A since-fixed bug briefly mis-selected the year's first row instead of
+  the latest when parsing the raw CSV; the original WebFetch-relayed snapshot was checked against it and
+  found accurate for its own stated date the whole time - see `docs/ASSUMPTIONS.md` "Treasury curve as_of
+  bug".)
 - **Sector/country contagion, not name-matching**, maps a real-company signal onto the fictional portfolio
   (no fictional position IS the named real company) - an explicit, documented assumption.
 - **The Fed scenario's peak/trough is applied as one instantaneous shock**, not its real ~2-year quarterly

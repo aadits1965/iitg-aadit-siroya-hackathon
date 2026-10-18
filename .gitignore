@@ -25,6 +25,8 @@ models/
 *.parquet
 data/cache/*.jsonl.gz
 *.db-journal
+data/cache/market/_verify_*.csv
+data/cache/news_gdelt.jsonl
 
 # OS / editor
 .DS_Store

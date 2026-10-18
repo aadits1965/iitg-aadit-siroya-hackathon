@@ -45,7 +45,15 @@ def _label_to_years(label: str) -> float | None:
 def fetch_treasury_curve(year: int | None = None, out_path: Path | None = None) -> Path:
     """Fetches the full year's daily par yield curve CSV and writes only the
     MOST RECENT row (the latest available as-of date) in the format
-    src/modules/stress_test/curve.py expects."""
+    src/modules/stress_test/curve.py expects.
+
+    Bug found on a real local run (2026-10-18/19): this used to grab
+    `lines[-1]` on the assumption the file is sorted ascending by date (oldest
+    first) -- but Treasury's CSV is actually sorted DESCENDING (newest first),
+    so `lines[-1]` was the YEAR'S FIRST business day (2026-01-02), not the
+    latest. Fixed by parsing every data row's date and picking the max,
+    regardless of file order -- never assume sort order from an external
+    source. See docs/ASSUMPTIONS.md "Treasury curve as_of bug"."""
     year = year or date.today().year
     out_path = out_path or (MARKET_CACHE_DIR / "treasury_par_yield_curve.csv")
 
@@ -63,8 +71,9 @@ def fetch_treasury_curve(year: int | None = None, out_path: Path | None = None) 
     if not maturity_cols:
         raise RuntimeError(f"Could not parse any maturity columns from Treasury header: {header_fields}")
 
-    last_row = next(_csv.reader([lines[-1]]))
-    as_of = datetime.strptime(last_row[0], "%m/%d/%Y").date()
+    data_rows = [next(_csv.reader([line])) for line in lines[1:] if line.strip()]
+    parsed_rows = [(datetime.strptime(row[0], "%m/%d/%Y").date(), row) for row in data_rows]
+    as_of, last_row = max(parsed_rows, key=lambda t: t[0])
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as f:
@@ -77,7 +86,8 @@ def fetch_treasury_curve(year: int | None = None, out_path: Path | None = None) 
             pct = float(last_row[col_idx])
             f.write(f"{years:.10g},{pct / 100.0:.6f}\n")
 
-    logger.info("wrote Treasury curve as_of=%s to %s", as_of, out_path)
+    logger.info("wrote Treasury curve as_of=%s (most recent of %d rows parsed) to %s",
+                as_of, len(parsed_rows), out_path)
     return out_path
 
 

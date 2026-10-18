@@ -190,23 +190,62 @@ signal must not fire (the exact Hasbro/Lowe's shape); a zero-sentiment, high-imp
 a negative-sentiment, high-impact signal must still fire; and when both impact and sentiment would fail,
 the reported reason names impact first (checked in that order).
 
-## Market data: provisional snapshot replaced with a direct fetch (2026-10-18)
+## Treasury curve `as_of` bug: picked the year's FIRST row, not the latest (2026-10-19)
 
-**Found on a real local run:** the provisional Treasury curve (fetched via Claude's WebFetch tool earlier
-in this build, see "Module B: EL horizon and the MTM / credit-loss split" and `docs/DATA_VERIFICATION.md`
-section 9) was off by **38-141bp at every tenor** against a genuine direct download from a normal network
-connection -- 2y 4.83% (provisional) vs 3.47% (direct), 10y 5.28% vs 4.19%, 30y 5.63% vs 4.86%. Per
-instruction, this is being treated as a **transcription error** (the WebFetch tool passes page content
-through a summarising model, which evidently misread the table), not ordinary date drift -- the gap is far
-too large and inconsistent across tenors to be explained by a few days/weeks of normal rate movement.
+**This section corrects an earlier, wrong conclusion in this same log.** A previous entry here claimed the
+provisional Treasury curve (fetched via WebFetch) was off by 38-141bp at every tenor against a direct
+download and called that a "transcription error." That comparison was itself wrong, and the conclusion is
+retracted -- see below.
 
-**Fix:** `scripts/build_cache.py --market-only` fetches the Treasury curve directly (no summarising model
-in the loop -- see `src/ingestion/market_data.py::fetch_treasury_curve()`), which never writes a
-`# provisional: true` header, so `YieldCurve.is_provisional` is `False` for any curve fetched this way.
-Re-run on a normal network on 2026-10-18 and got 2y=3.47%, 10y=4.19%, 30y=4.86% -- matching the real
-direct-download values exactly. All PROVISIONAL banners (dashboard, README, deck) are driven off
-`stress_test_output.json`'s `data_provisional` flag, so they disappear automatically once a real,
-non-provisional curve is in place -- no manual banner removal needed anywhere.
+**Root cause:** `fetch_treasury_curve()` took `lines[-1]` of the annual CSV response on the assumption the
+file is sorted ascending (oldest first). It is actually sorted **descending** (newest first) -- so
+`lines[-1]` was the **year's first business day** (2026-01-02), not the latest. The first `--market-only`
+run in this build silently loaded the 2026-01-02 curve and reported `as_of: 2026-01-02` -- a stale date
+that went unnoticed at the time, and the "matches Aadit's laptop exactly" check that followed was
+comparing that same wrong (01-02) row against Aadit's own direct download, which happened to also be an
+early-year rate level -- not evidence the fetch was dated correctly.
+
+**What this means for the earlier "transcription error" claim, checked directly, per tenor:** fetched the
+raw Treasury CSV again and compared the provisional snapshot's stated date (2026-10-02) against the
+**direct fetch's own 2026-10-02 row** (not the 2026-01-02 row used by mistake before):
+
+| Tenor | Provisional (stated 2026-10-02) | Direct fetch's actual 2026-10-02 row | Diff |
+|---|---|---|---|
+| 1 Mo | 4.04% | 4.04% | 0bp |
+| 2 Mo | 4.11% | 4.11% | 0bp |
+| 3 Mo | 4.19% | 4.19% | 0bp |
+| 6 Mo | 4.27% | 4.27% | 0bp |
+| 1 Yr | 4.46% | 4.46% | 0bp |
+| 2 Yr | 4.83% | 4.83% | 0bp |
+| 3 Yr | 4.96% | 4.96% | 0bp |
+| 5 Yr | 5.06% | 5.06% | 0bp |
+| 7 Yr | 5.17% | 5.17% | 0bp |
+| 10 Yr | 5.28% | 5.28% | 0bp |
+| 20 Yr | 5.67% | 5.67% | 0bp |
+| 30 Yr | 5.63% | 5.63% | 0bp |
+
+**Every tenor matches exactly.** The provisional 2026-10-02 snapshot was correct for its stated date all
+along -- there was never a transcription error. The earlier "38-141bp" gap was entirely an artifact of
+comparing it against the wrong row (2026-01-02, ~9.5 months earlier) due to the `as_of`-selection bug
+above, not a data-quality problem with the WebFetch-relayed snapshot. `docs/DATA_VERIFICATION.md` section 9
+is corrected accordingly -- it no longer claims a transcription error.
+
+For reference, the real two-week rate move (2026-10-02 -> 2026-10-16, the genuinely latest row) is a
+modest, plausible curve move -- short end up ~6-8bp, long end down ~17-20bp (a mild flattening) -- nothing
+like the original mis-measured gap.
+
+**Fix:** `fetch_treasury_curve()` now parses every data row's date and picks the **max**, regardless of
+file order, instead of assuming a sort order. 3 new/updated tests in `tests/test_market_data.py`,
+including one that explicitly shuffles out-of-order rows and asserts `as_of` is the max date present, not
+whichever row happens to be last in the file. Re-fetched after the fix: `as_of: 2026-10-16` (199 rows
+parsed), matching the expected "most recent business day" directly.
+
+**Separately, still true:** `scripts/build_cache.py --market-only` fetches the curve directly (no
+summarising model in the loop), which never writes a `# provisional: true` header, so
+`YieldCurve.is_provisional` is `False` for any curve fetched this way -- this part of the original fix was
+correct and unaffected by the `as_of` bug. All PROVISIONAL banners (dashboard, README, deck) are driven off
+`stress_test_output.json`'s `data_provisional` flag and disappear automatically once a real curve is in
+place, regardless of which date it is.
 
 ## Module B: equity prices are optional except for options
 

@@ -651,3 +651,46 @@ expected, since the underlying curve/spot inputs changed to real values). Regene
 `results/stress_test_output.json`, `README.md`, `docs/presentation.pptx`, deck charts. Full suite:
 **143 passed, 2 skipped** (5 new). `scripts/audit_compliance.py`: same single expected failure
 (`docs/presentation.pdf` missing), nothing new broken.
+
+## Correction (2026-10-19): the "transcription error" finding above was itself wrong
+
+**Retraction:** the "Provisional Treasury curve was off by 38-141bp at every tenor" / "transcription error"
+finding in the section above is **withdrawn**. It was based on a bug in this project's own code, not a
+real data-quality problem.
+
+**Root cause, found on a real local run of `scripts/refresh_local.ps1`:** `fetch_treasury_curve()` took
+the CSV response's *last line*, assuming the file is sorted ascending (oldest first). Treasury's annual
+file is actually sorted **descending** (newest first), so the last line was the year's first business day
+(2026-01-02), not the latest. `--market-only` had been silently loading `as_of: 2026-01-02` instead of the
+real latest date (~2026-10-16) -- and the "matches Aadit's laptop exactly" check in the prior round
+compared *that same wrong row* against Aadit's own direct download, which doesn't prove anything about
+whether the date was right.
+
+**Re-checked, per tenor, against the correct 2026-10-02 row** (fetched fresh, located explicitly by date
+rather than by file position): every one of the 12 published tenors matches the provisional snapshot
+**exactly, 0bp difference** -- 1Mo 4.04%=4.04%, 2Yr 4.83%=4.83%, 10Yr 5.28%=5.28%, 30Yr 5.63%=5.63%, etc.
+(full table in `docs/ASSUMPTIONS.md` "Treasury curve `as_of` bug"). The provisional WebFetch-relayed
+snapshot was accurate for its stated date the entire time -- there was never a transcription error. The
+previously-reported "38-141bp" gap was purely an artifact of comparing against the wrong (2026-01-02) row,
+a ~9.5-month-earlier curve.
+
+**Fix:** `fetch_treasury_curve()` now parses every row's date and selects the max, regardless of file
+order. Re-fetched: `as_of: 2026-10-16` (199 rows parsed) -- the genuinely latest available business day.
+3 tests added/updated in `tests/test_market_data.py`, including an explicit regression test that shuffles
+out-of-order rows and asserts `as_of` is the max date present.
+
+`docs/DATA_VERIFICATION.md` (new section 14) and `docs/ASSUMPTIONS.md` both corrected with the retraction
+and the real per-tenor comparison -- the old (wrong) conclusion is left in place above as the historical
+record, per this log's own convention of appending corrections rather than rewriting history, with this
+entry marking it superseded.
+
+**`.gitignore`:** added `data/cache/market/_verify_*.csv` (written by `scripts/verify_provisional_data.py`)
+and `data/cache/news_gdelt.jsonl`, per instruction -- neither was actually tracked yet (`git rm --cached`
+confirmed, correctly, "did not match any files"), so this is purely preventive for future runs.
+
+**Re-ran the full pipeline on the corrected curve.** Headline scenario: **$658,497,132 -> $644,703,575,
+total stressed loss -$13,793,557 (-2.09%)**. P&L by asset class: loan -$15,096,079, bond -$27,574,416,
+option +$43,162,632, swap -$4,151,298, fx_forward -$10,134,396. (Changed again from the previous round's
+-2.41% -- expected, since the curve date moved from the wrong 2026-01-02 to the correct 2026-10-16, a
+materially different point in the yield curve's path.) Regenerated `results/stress_test_output.json`,
+`README.md`, `docs/presentation.pptx`, deck charts. Full suite: **145 passed, 2 skipped** (3 new).

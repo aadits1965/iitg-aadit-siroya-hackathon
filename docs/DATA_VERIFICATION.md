@@ -340,6 +340,31 @@ every one found, rather than a generic random sample:
 rule, not just the measurement. 2 more regression tests added confirming bare "Apple"/"Oracle" now match.
 Re-ran the full pipeline once more after this change; 112/112 tests passing.
 
+## 14. Addendum (2026-10-19) — correction: the provisional curve was never wrong; the comparison was
+
+**This retracts a conclusion reached during the 2026-10-18 local-run fixes** (previously recorded here and
+in `docs/ASSUMPTIONS.md` as the provisional Treasury curve being off by 38-141bp at every tenor, called a
+"transcription error"). That conclusion was itself based on a bug, not a real data-quality problem, and is
+withdrawn.
+
+**What actually happened:** `src/ingestion/market_data.py::fetch_treasury_curve()` took the CSV response's
+*last line* on the (wrong) assumption the file is sorted ascending by date. Treasury's annual file is
+actually sorted **descending** (newest first), so the last line was the year's **first** business day
+(2026-01-02) — not the latest, as the code's own docstring claimed. The direct-fetch comparison that
+produced the "38-141bp" figure was therefore comparing the provisional snapshot's stated date (2026-10-02)
+against a wrongly-selected 2026-01-02 row — a ~9.5-month-earlier curve — not against the real 2026-10-02
+market.
+
+**Re-checked directly, per tenor, against the correct 2026-10-02 row from a fresh direct fetch:** every
+one of the 12 published tenors (1Mo through 30Yr) matches the provisional snapshot **exactly, 0bp
+difference at every point** (full table in `docs/ASSUMPTIONS.md`, "Treasury curve `as_of` bug"). The
+provisional WebFetch-relayed snapshot was accurate for its stated date the entire time.
+
+**Fix:** `fetch_treasury_curve()` now parses every row's date and selects the maximum, regardless of file
+order. Re-fetched: `as_of: 2026-10-16` (the genuinely latest available business day, 199 rows parsed). 3
+tests in `tests/test_market_data.py` (including an explicit out-of-order-rows regression test) guard
+against this specific bug recurring.
+
 ## Net effect on scope (superseded fields updated by §8 addendum above)
 
 - News: GDELT (primary, live+replay, headline-level only — no article body) + NewsAPI (optional, live-only,
