@@ -694,3 +694,41 @@ option +$43,162,632, swap -$4,151,298, fx_forward -$10,134,396. (Changed again f
 -2.41% -- expected, since the curve date moved from the wrong 2026-01-02 to the correct 2026-10-16, a
 materially different point in the yield curve's path.) Regenerated `results/stress_test_output.json`,
 `README.md`, `docs/presentation.pptx`, deck charts. Full suite: **145 passed, 2 skipped** (3 new).
+
+## Dashboard crash fix: KeyError on 'not_run' event-study status (2026-10-19)
+
+**Bug reported from a real local run at `f81a1ff`:** `KeyError: 'n_resolved'` at
+`src/dashboard/app.py` line 197, crashing the whole page (Streamlit executes the full script
+top-to-bottom on every run -- `with tab:` only scopes layout, not execution -- so one tab's
+unhandled exception stops every tab, including Stress Test, from rendering). Root cause: the
+Engine Quality tab's `if not ies:` check is False for `ies = {"status": "not_run", ...}` (a
+truthy dict), so it fell into the branch that does `ies["n_resolved"]` -- a key that genuinely
+doesn't exist on the "not_run" shape introduced in the previous round's GDELT-abandonment fix.
+
+**Fix:** explicitly check `ies.get("status") == "not_run"` before the numeric branch, and reuse
+`scripts/generate_readme.py::format_impact_event_study_status()` (imported into `app.py`) for the
+message, rather than duplicating status-interpretation logic -- the dashboard now always says
+exactly the same thing as the README/deck for this metric. Remaining numeric-branch accesses
+switched from bare `[]` to `.get()` with sensible fallbacks for the two optional sub-fields
+(`spearman_r`, `power_adequate`/`note`) that are genuinely optional even within a resolved result.
+
+**Audited every other `metrics.json`/`stress_test_output.json` read in `app.py`** for the same
+class of bug: `sentiment_eval`'s sub-fields, `stress_test_output.json`'s top-level fields, and
+`headline_scenario`'s fields are all unconditionally written by their producing scripts (confirmed
+by reading `scripts/run_sentiment_eval.py` and `scripts/run_stress_test.py`'s output-dict
+construction) -- not actually optional, so bare `[]` there is correct, not a latent bug.
+`impact_score_event_study` was the only genuinely polymorphic field (absent / `not_run` / full
+result), and is now the only one with branching logic.
+
+**Added `tests/test_dashboard_app.py`** using `streamlit.testing.v1.AppTest` to run the real
+`src/dashboard/app.py` against the actual current committed `results/` files (no mocking) and
+assert zero exceptions -- this is the test that would have caught the reported bug. **It also
+caught a second, real latent bug while being written**: Tab 1 (Live Signal Feed) and Tab 5 (Audit
+Log) both used a bare module-scope variable named `rows`; Tab 1's `st.selectbox` `format_func`
+lambda closes over `rows` by reference, and since Tab 5's code runs later in the same full-script
+execution and reassigns `rows`, the lambda could end up looking up Tab 1's signal IDs in Tab 5's
+audit rows (`KeyError: 'headline'`). Fixed by renaming Tab 1's variable to `feed_rows`, eliminating
+the collision.
+
+Full suite: **147 passed, 2 skipped** (2 new dashboard tests). `scripts/audit_compliance.py`: same
+single expected failure (`docs/presentation.pdf` missing), nothing new.

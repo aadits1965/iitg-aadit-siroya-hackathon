@@ -15,7 +15,9 @@ import plotly.graph_objects as go
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 
+from generate_readme import format_impact_event_study_status  # noqa: E402
 from src.dashboard.data import (  # noqa: E402
     load_latest_equity_spot,
     load_metrics,
@@ -65,7 +67,7 @@ with tab_feed:
             all_sources = sorted({s for sig in signals for s in sig["sources"]})
             source_filter = st.multiselect("Source", all_sources, default=[])
 
-        rows = []
+        feed_rows = []
         for sig in signals:
             if sig["impact"]["score"] < min_impact:
                 continue
@@ -73,7 +75,7 @@ with tab_feed:
                 continue
             if source_filter and not set(sig["sources"]) & set(source_filter):
                 continue
-            rows.append({
+            feed_rows.append({
                 "created_at_utc": sig["created_at_utc"],
                 "headline": sig["text_preview"][:90],
                 "tickers": ", ".join(sig["tickers"]) or "—",
@@ -87,7 +89,7 @@ with tab_feed:
                 "signal_id": sig["signal_id"],
             })
 
-        df = pd.DataFrame(rows).sort_values("impact_score", ascending=False)
+        df = pd.DataFrame(feed_rows).sort_values("impact_score", ascending=False)
         st.caption(f"{len(df)} signals match the current filters")
         st.dataframe(
             df.drop(columns=["signal_id"]),
@@ -101,8 +103,14 @@ with tab_feed:
 
         st.markdown("#### Impact-score component breakdown")
         if len(df) > 0:
+            # Bug found by tests/test_dashboard_app.py: this used to close over a
+            # bare `rows` variable, which Tab 5 (Audit Log) also assigns at the
+            # same script-level scope later in this file -- a format_func
+            # closure captures by reference, not by value, so by the time it's
+            # evaluated it could see Tab 5's rows instead of this tab's. Renamed
+            # to feed_rows specifically to make the closure unambiguous.
             selected_id = st.selectbox("Pick a signal to inspect", df["signal_id"], format_func=lambda sid: next(
-                r["headline"] for r in rows if r["signal_id"] == sid
+                r["headline"] for r in feed_rows if r["signal_id"] == sid
             ))
             sig = next(s for s in signals if s["signal_id"] == selected_id)
             comp = sig["impact"]["components"]
@@ -185,20 +193,23 @@ with tab_quality:
     st.divider()
     st.subheader("Impact Score event study")
     ies = metrics.get("impact_score_event_study")
-    if not ies:
-        st.info(
-            "Not yet run against a real sample in this environment — GDELT (needed for a large enough "
-            "timestamped, ticker-linked sample) is blocked from this dev sandbox. See "
-            "docs/EVALUATION.md section 3 and docs/USER_TODO.md for the exact command to run once real "
-            "GDELT data is available."
-        )
+    if not ies or ies.get("status") == "not_run":
+        # Covers both "key absent entirely" and the explicit {"status": "not_run", ...}
+        # shape written when GDELT was abandoned as a data source (see
+        # docs/ASSUMPTIONS.md "Impact-score event study: not run") -- reuses the
+        # exact same status text the README/deck show, so the dashboard never
+        # says something different from the generated docs.
+        st.info(format_impact_event_study_status(metrics))
+    elif "n_resolved" not in ies:
+        st.warning(f"impact_score_event_study has an unrecognized shape (keys: {sorted(ies.keys())}) -- "
+                   f"not rendering metrics that may not exist.")
     else:
         c1, c2, c3 = st.columns(3)
         c1.metric("n resolved", ies["n_resolved"])
-        c2.metric("Spearman r", f"{ies['spearman_r']:.3f}" if ies["spearman_r"] is not None else "—")
-        c3.metric("Power adequate (n≥200)", "Yes" if ies["power_adequate"] else "No")
-        if not ies["power_adequate"]:
-            st.warning(ies["note"])
+        c2.metric("Spearman r", f"{ies['spearman_r']:.3f}" if ies.get("spearman_r") is not None else "—")
+        c3.metric("Power adequate (n≥200)", "Yes" if ies.get("power_adequate") else "No")
+        if not ies.get("power_adequate"):
+            st.warning(ies.get("note", "Underpowered -- see docs/EVALUATION.md section 3."))
 
 # ---------------------------------------------------------------------------
 # Tab 3: Stress Test
