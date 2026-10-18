@@ -68,6 +68,35 @@ def summarize(result, label: str, extra: dict | None = None) -> dict:
     return out
 
 
+def exclude_unpriceable_options(portfolio: list, equity_spot: dict) -> tuple[list, list[dict]]:
+    """Equity spot prices are only needed to price the `option` asset class (5 of
+    50 positions in the real portfolio: Black-Scholes needs a spot for
+    strike/quantity -- see value_position() in revaluation.py). Loans, bonds,
+    swaps, and FX forwards never touch equity_spot. If a real spot price is
+    missing for an option's underlying (e.g. yfinance unavailable), this
+    excludes just that position rather than crashing the whole run -- excluded
+    loudly, in the returned list, never silently. Returns (priceable_portfolio,
+    excluded_positions)."""
+    missing_underlyings = {
+        p.extra["underlying"] for p in portfolio if p.asset_class == "option"
+    } - set(equity_spot)
+    if not missing_underlyings:
+        return portfolio, []
+
+    priceable = [
+        p for p in portfolio
+        if not (p.asset_class == "option" and p.extra["underlying"] in missing_underlyings)
+    ]
+    excluded = [
+        {"position_id": p.position_id, "asset_class": p.asset_class,
+         "underlying": p.extra["underlying"], "notional": p.notional,
+         "reason": f"no equity spot price available for underlying {p.extra['underlying']!r}"}
+        for p in portfolio
+        if p.asset_class == "option" and p.extra["underlying"] in missing_underlyings
+    ]
+    return priceable, excluded
+
+
 def main():
     curve = load_curve()  # raises MissingCurveCacheError if no real cache -- no silent fallback
     if curve.is_synthetic_test_only:
@@ -82,6 +111,14 @@ def main():
     portfolio = load_portfolio(PORTFOLIO_PATH)
     equity_spot = load_latest_equity_spot()
     logger.info("loaded %d positions, %d equity spot prices", len(portfolio), len(equity_spot))
+
+    portfolio, excluded_positions = exclude_unpriceable_options(portfolio, equity_spot)
+    if excluded_positions:
+        logger.warning(
+            "no equity spot price for %d option position(s) -- excluded from this run, see "
+            "docs/ASSUMPTIONS.md 'Module B: equity prices are optional except for options': %s",
+            len(excluded_positions), [p["position_id"] for p in excluded_positions],
+        )
 
     signals = load_signals_from_file()
     signals_by_id = {s["signal_id"]: s for s in signals}
@@ -101,6 +138,7 @@ def main():
         "curve_source": curve.source,
         "n_signals_evaluated": len(decisions),
         "n_fired": len(fired),
+        "excluded_positions": excluded_positions,
         "fired_scenarios": [],
     }
 
@@ -157,7 +195,8 @@ def main():
     sample_option = next((p for p in portfolio if p.asset_class == "option"), None)
     option_comparison = []
     if sample_option:
-        spot = equity_spot[sample_option.extra["underlying"]]
+        spot = equity_spot.get(sample_option.extra["underlying"])
+    if sample_option and spot is not None:
         option_comparison = option_full_vs_delta_only(
             spot=spot, strike=sample_option.extra["moneyness"] * spot, maturity_years=sample_option.maturity_years,
             risk_free_rate=curve.zero_rate(sample_option.maturity_years), volatility=sample_option.extra["volatility"],
@@ -180,6 +219,9 @@ def main():
                  "naive_delta_only": round(c.naive_approx_value, 4), "error": round(c.error, 4)}
                 for c in option_comparison
             ],
+            "note": (None if option_comparison else
+                     "no option position with a real equity spot price was available -- see "
+                     "excluded_positions above"),
         },
     }
 
@@ -192,6 +234,9 @@ def main():
         print("*** Run scripts/verify_provisional_data.py first.                                        ***")
     print(f"Curve as-of: {curve.as_of} ({curve.source[:80]}...)")
     print(f"Portfolio: {len(portfolio)} positions, total notional ${sum(p.notional for p in portfolio):,.0f}")
+    if excluded_positions:
+        print(f"*** {len(excluded_positions)} position(s) EXCLUDED from this run (no real equity spot price): "
+              f"{[p['position_id'] for p in excluded_positions]} -- see excluded_positions in the output JSON. ***")
     print(f"Signals: {len(decisions)} evaluated, {len(fired)} fired\n")
 
     if headline:

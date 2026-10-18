@@ -190,6 +190,62 @@ signal must not fire (the exact Hasbro/Lowe's shape); a zero-sentiment, high-imp
 a negative-sentiment, high-impact signal must still fire; and when both impact and sentiment would fail,
 the reported reason names impact first (checked in that order).
 
+## Market data: provisional snapshot replaced with a direct fetch (2026-10-18)
+
+**Found on a real local run:** the provisional Treasury curve (fetched via Claude's WebFetch tool earlier
+in this build, see "Module B: EL horizon and the MTM / credit-loss split" and `docs/DATA_VERIFICATION.md`
+section 9) was off by **38-141bp at every tenor** against a genuine direct download from a normal network
+connection -- 2y 4.83% (provisional) vs 3.47% (direct), 10y 5.28% vs 4.19%, 30y 5.63% vs 4.86%. Per
+instruction, this is being treated as a **transcription error** (the WebFetch tool passes page content
+through a summarising model, which evidently misread the table), not ordinary date drift -- the gap is far
+too large and inconsistent across tenors to be explained by a few days/weeks of normal rate movement.
+
+**Fix:** `scripts/build_cache.py --market-only` fetches the Treasury curve directly (no summarising model
+in the loop -- see `src/ingestion/market_data.py::fetch_treasury_curve()`), which never writes a
+`# provisional: true` header, so `YieldCurve.is_provisional` is `False` for any curve fetched this way.
+Re-run on a normal network on 2026-10-18 and got 2y=3.47%, 10y=4.19%, 30y=4.86% -- matching the real
+direct-download values exactly. All PROVISIONAL banners (dashboard, README, deck) are driven off
+`stress_test_output.json`'s `data_provisional` flag, so they disappear automatically once a real,
+non-provisional curve is in place -- no manual banner removal needed anywhere.
+
+## Module B: equity prices are optional except for options
+
+**Exactly what in Module B uses equity spot prices:** only the `option` asset class (5 of 50 positions in
+the real portfolio, underlyings JPM and NVDA -- see `data/synthetic/portfolio.csv`). Black-Scholes needs a
+spot price to derive the strike (`moneyness * spot`) and the position's quantity (`notional / spot`) --
+see `value_position()` in `src/modules/stress_test/revaluation.py`. **Loans, bonds, swaps, and FX forwards
+never touch `equity_spot`** -- loans are priced off PD/LGD/EAD only, bonds and swaps off the discount
+curve only, FX forwards off a flat percentage move. So Module B does *not* need the ~80-ticker
+event-study-universe equity pull at all (that pull exists only for the now-abandoned impact-score event
+study) -- it needs real spot prices for exactly 2 tickers.
+
+**yfinance 0.2.50 (the version this project was originally pinned to) failed outright on a real machine**
+(`YFTzMissingError` / `"Expecting value"` JSON errors, for every ticker) on 2026-10-18. Bumped to **1.7.0**
+(confirmed the current latest release via `pip index versions yfinance`; yfinance moved from the 0.2.x
+series to a 1.x line at some point after 0.2.66) -- confirmed working end-to-end against the existing
+`fetch_equity_prices()` code with no code changes needed.
+
+**Graceful degradation, in case yfinance ever fails again on a given machine:** rather than letting a
+missing spot price crash the entire stress test with an unhandled `KeyError`, `scripts/run_stress_test.py`'s
+`exclude_unpriceable_options()` drops just the affected option position(s) and records them, loudly, in
+`results/stress_test_output.json`'s `excluded_positions` field (position ID, underlying, notional, reason)
+-- never silently. The other 45+ positions (and any option whose underlying *does* have a spot price) still
+price normally. See `tests/test_run_stress_test_exclusion.py`.
+
+## Impact-score event study: not run
+
+**GDELT returned HTTP 429 on every query for 2+ hours (0 articles returned)** on a real local run,
+2026-10-18. Per instruction, GDELT is **abandoned as a data source for this submission** -- not retried,
+not substituted with another source without saying so. `results/metrics.json`'s
+`impact_score_event_study` key records `"status": "not_run"` with the exact reason and the date attempted,
+rather than either omitting the key (which would look unexamined) or computing a number from whatever
+non-GDELT data happens to be cached (which would silently change what the number means). The event study's
+own code (`src/eval/impact_event_study.py`, `scripts/run_impact_event_study.py`) is unaffected and
+unchanged -- it is built and mechanically verified (synthetic-price-series tests pass), it simply has no
+real sample to run against. The README's Key Results section, Limitations section, and the deck's slide 7
+all report this exact "not run" status via `scripts/generate_readme.py::format_impact_event_study_status()`
+-- no invented correlation number appears anywhere.
+
 ## GDELT headline-level constraint
 
 - The GDELT DOC 2.0 API returns `title` (headline) but no article body field. This project's NLP therefore

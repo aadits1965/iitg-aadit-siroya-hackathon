@@ -222,17 +222,24 @@ def main():
     # significant relationship" or "UNDERPOWERED" statement) once Aadit's
     # local GDELT/labelling runs produce it, with no code change needed here.
     s7 = add_content_slide(prs, "Limitations & Next Steps")
+    market_data_bullet = (
+        "Market data (Treasury curve, equity spot) is PROVISIONAL in this build — fetched via a tool with a "
+        "summarising model in the loop, not a direct download; a verification script exists to cross-check it."
+        if data_provisional else
+        "Market data (Treasury curve, equity spot) is SOURCED, not provisional — fetched directly. An earlier "
+        "WebFetch-relayed snapshot was off by 38-141bp at every tenor (transcription error) and was replaced."
+    )
     add_bullets(s7, [
         (format_impact_event_study_status(metrics).replace("**", ""), 0),
         (format_event_classification_status(metrics).replace("**", ""), 0),
-        ("Market data (Treasury curve, equity spot) is PROVISIONAL in this build — fetched via a tool with a "
-         "summarising model in the loop, not a direct download; a verification script exists to cross-check it.", 0),
+        (market_data_bullet, 0),
         ("English-only; GDELT gives headline-level text only (no article body); the social replay source is "
          "historical with synthetic timestamps, creating a real date mismatch against the live market snapshot.", 0),
         ("Credit loss is 1-year EL (Basel-style), not IFRS 9 lifetime ECL — a real stress scenario would typically "
          "trigger Stage 2/3 staging, so this is a lower bound, stated as such.", 0),
-        ("Next: finish the two pending evaluations once real GDELT/market data is available; Module A (tactical "
-         "rebalancing) if time permits.", 0),
+        ("Next: finish event-classification scoring once the gold set is hand-labelled. The impact-score event "
+         "study has no further next step with GDELT abandoned (rate-limited, 0 articles over 2+ hours) — it "
+         "would need a different news source entirely.", 0),
     ], font_size=15)
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)

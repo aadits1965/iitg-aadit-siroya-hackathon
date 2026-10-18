@@ -73,6 +73,10 @@ def format_impact_event_study_status(metrics: dict) -> str:
         return ("Impact Score event-study correlation: **pending** -- needs a real GDELT sample "
                 "(this dev sandbox cannot reach GDELT; see `docs/DATA_VERIFICATION.md` section 8). "
                 "Run `scripts/run_impact_event_study.py` after `scripts/build_cache.py`.")
+    if ies.get("status") == "not_run":
+        return (f"Impact Score event-study correlation: **not run** -- {ies['reason']} "
+                f"(attempted {ies.get('attempted_on', 'date unknown')}). No number is reported here because "
+                f"none was computed -- see `docs/ASSUMPTIONS.md` \"Impact-score event study: not run\".")
     n = ies["n_resolved"]
     r = ies.get("spearman_r")
     if r is None:

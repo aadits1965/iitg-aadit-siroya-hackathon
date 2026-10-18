@@ -609,3 +609,45 @@ and console summary were correct throughout).
 Regenerated `results/stress_test_output.json`, `README.md`, `docs/presentation.pptx`, and the 3 deck chart
 PNGs. Full suite: **138 passed, 2 skipped** (4 new). `scripts/audit_compliance.py`: same single expected
 failure (`docs/presentation.pdf` missing), nothing new.
+
+## Real local-network findings (Aadit's laptop, Windows/Python 3.11, 2026-10-18) resolved
+
+1. **Provisional Treasury curve was off by 38-141bp at every tenor** (2y 4.83% provisional vs 3.47% direct,
+   10y 5.28% vs 4.19%, 30y 5.63% vs 4.86%) -- a WebFetch transcription error, not date drift (too large/
+   inconsistent across tenors to be ordinary rate movement). Added `scripts/build_cache.py --market-only`:
+   fetches the Treasury curve directly (never provisional -- `fetch_treasury_curve()` never writes a
+   `# provisional: true` header) plus FRED plus equity spot for just the tickers Module B needs. Re-ran it
+   in this sandbox on a connection that reached treasury.gov directly this time and got **2y=3.47%,
+   10y=4.19%, 30y=4.86% -- matching Aadit's own direct-download values exactly.** All PROVISIONAL banners
+   (dashboard/README/deck) are driven off `stress_test_output.json`'s `data_provisional` flag, which is now
+   `False` -- they disappeared automatically, no manual removal needed anywhere.
+2. **yfinance 0.2.50 failed outright on a real machine** (`YFTzMissingError`/`"Expecting value"` for every
+   ticker). **What Module B actually uses equity prices for, exactly:** only the `option` asset class (5 of
+   50 positions, underlyings JPM and NVDA) -- Black-Scholes needs a spot for strike/quantity. Loans, bonds,
+   swaps, and FX forwards never touch equity prices. Bumped `requirements.txt` to **yfinance==1.7.0**
+   (confirmed current latest via `pip index versions yfinance` -- yfinance moved from the 0.2.x series to a
+   1.x line at some point past 0.2.66); confirmed working end-to-end with no code changes to the fetch
+   logic. Added graceful degradation regardless: `scripts/run_stress_test.py::exclude_unpriceable_options()`
+   drops just the affected option position(s) if a spot price is ever missing again, loudly reported in
+   `results/stress_test_output.json`'s new `excluded_positions` field, rather than crashing the whole run
+   with an unhandled `KeyError`. 5 new tests in `tests/test_run_stress_test_exclusion.py`.
+3. **GDELT returned HTTP 429 on every query for 2+ hours (0 articles)** -- abandoned as a data source for
+   this submission, per instruction, not retried. `results/metrics.json`'s `impact_score_event_study` now
+   records `"status": "not_run"` with the exact reason and date, instead of a number or silent omission.
+   `format_impact_event_study_status()` (README + deck, same function) reports this "not run" status
+   explicitly. The Limitations sections (README template + deck slide 7) and the Dataset Used table were
+   all updated to state this plainly rather than describe GDELT as merely "unreachable from this dev
+   sandbox" (no longer true-sounding once it's been abandoned outright, not just blocked here).
+4. `docs/ASSUMPTIONS.md` documents all three findings/fixes in full, with the real before/after numbers.
+   `docs/USER_TODO.md` rewritten: the GDELT-dependent gold-resampling step is gone (GDELT is abandoned), and
+   the local refresh workflow now points at the new `scripts/refresh_local.ps1`.
+5. **`scripts/refresh_local.ps1`** (new): market-only fetch -> re-run stress test -> regenerate README +
+   deck -> run tests -> `git add`/`commit`/`push`, each step stopping the script on failure so nothing
+   half-finished gets pushed. `-SkipPush` switch to review before pushing.
+
+Re-ran the full pipeline on the freshly-sourced real data: headline scenario now **$667,925,507 ->
+$651,855,012, total stressed loss -$16,070,495 (-2.41%)** (changed from the provisional run's -2.03% --
+expected, since the underlying curve/spot inputs changed to real values). Regenerated
+`results/stress_test_output.json`, `README.md`, `docs/presentation.pptx`, deck charts. Full suite:
+**143 passed, 2 skipped** (5 new). `scripts/audit_compliance.py`: same single expected failure
+(`docs/presentation.pdf` missing), nothing new broken.

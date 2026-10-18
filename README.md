@@ -46,11 +46,11 @@ generation).
 
 | Source | Nature | Licence | Size (cached) | Notes |
 |---|---|---|---|---|
-| GDELT DOC 2.0 | Public news headlines | CC0 | varies (live/cached) | Headline-level only - the API has no article-body field (confirmed live) |
+| GDELT DOC 2.0 | Public news headlines | CC0 | 0 articles | **Abandoned for this submission** - HTTP 429 (rate-limited) on every query for 2+ hours on 2026-10-18; see `docs/ASSUMPTIONS.md` "Impact-score event study: not run" |
 | Mastodon public hashtag timelines | Live social posts | Public API, no auth | 73 real posts cached | Confirmed working live; see `docs/DATA_VERIFICATION.md` section 8 |
 | `zeroshot/twitter-financial-news-sentiment` (Hugging Face) | Historical tweet replay (offline fallback) | MIT | 300 rows cached | No real timestamps - synthetic, flagged in every row; excluded from the event study |
-| US Treasury daily par yield curve | Market data | Public domain | 1 dated snapshot | **PROVISIONAL** - see section 5 and `docs/DATA_VERIFICATION.md` section 9 |
-| Yahoo Finance (via a verified-working fetch path) | Equity spot prices | Public | 5 tickers, 1 date | **PROVISIONAL**, same caveat |
+| US Treasury daily par yield curve | Market data | Public domain | 1 dated snapshot | SOURCED directly (not provisional) - fetched via `scripts/build_cache.py --market-only` on 2026-10-18; see `docs/ASSUMPTIONS.md` "Market data: provisional snapshot replaced with a direct fetch" |
+| Yahoo Finance (`yfinance` 1.7.0) | Equity spot prices | Public | 2 tickers (JPM, NVDA - the only Module B option underlyings) + SPY | SOURCED directly, not provisional - same 2026-10-18 fetch |
 | Federal Reserve severely-adverse stress scenario | Macro shock magnitudes | Public | 1 scenario table | SOURCED directly (not provisional) - see `docs/DATA_VERIFICATION.md` section 10 |
 
 All data and assumptions (rating-to-PD mapping, shock library magnitudes, the EL horizon choice, the
@@ -90,30 +90,29 @@ rather than this project's dev sandbox.
 FinBERT's macro-F1 CI does not overlap either baseline's. Inference measured at 138.5ms/doc on CPU.
 
 **Module B stress test** (real portfolio: 50 positions, ~$992M notional)
-76 real signals evaluated, 3 fired a stress test. Curve as-of 2026-10-02.
-> **Note:** the market data behind the stress-test numbers below is PROVISIONAL (see `docs/DATA_VERIFICATION.md` section 9 and `docs/USER_TODO.md`) -- fetched via a tool that passes content through a summarising model, not a direct download, because this dev sandbox cannot reach treasury.gov/Yahoo Finance directly. Cross-check with `scripts/verify_provisional_data.py` before treating these exact figures as final.
-
+76 real signals evaluated, 3 fired a stress test. Curve as-of 2026-01-02.
 
 Highest-impact real trigger: *US stock futures slip ahead of #inflation report - #stocks...* (`Macroeconomic`, tier `fed_severely_adverse`).
-- Portfolio value: $656,917,251 -> $643,610,408
-- MTM P&L (bonds/swaps/options/FX): $1,789,236
+- Portfolio value: $667,925,507 -> $651,855,012
+- MTM P&L (bonds/swaps/options/FX): $-974,415
 - Credit loss (loans, delta-EL): $15,096,079
-- **Total stressed loss: $-13,306,843 (-2.03%)**
+- **Total stressed loss: $-16,070,495 (-2.41%)**
 
-**Full reprice vs naive approximation** (required comparison, both measured on real portfolio positions): bond duration-only error grows to -57,839 at -200bp vs. a full cashflow reprice; option delta-only error grows to -27.68 at -40% spot vs. a full Black-Scholes reprice -- both confirm genuine, growing convexity/gamma error (see `tests/test_naive_approx.py`).
+**Full reprice vs naive approximation** (required comparison, both measured on real portfolio positions): bond duration-only error grows to -62,358 at -200bp vs. a full cashflow reprice; option delta-only error grows to -28.46 at -40% spot vs. a full Black-Scholes reprice -- both confirm genuine, growing convexity/gamma error (see `tests/test_naive_approx.py`).
 
 **Why it matters:** a risk/ratings team reading thousands of headlines a day cannot manually translate each one into a portfolio impact. This pipeline shows that translation happening end to end -- from raw text to a dollar P&L number, with the mark-to-market and credit-loss channels kept separate so neither number silently double-counts the other.
 
 **Two evaluations from the original brief, status as of this generation:**
 - Event classification accuracy: **pending** -- needs `data/eval/event_gold.csv` fully hand-labelled, then `scripts/score_event_classifier.py` (scores the frozen `rule-v1`, git tag `classifier-v1`).
-- Impact Score event-study correlation: **pending** -- needs a real GDELT sample (this dev sandbox cannot reach GDELT; see `docs/DATA_VERIFICATION.md` section 8). Run `scripts/run_impact_event_study.py` after `scripts/build_cache.py`.
+- Impact Score event-study correlation: **not run** -- GDELT rate-limited: HTTP 429 returned on every query for 2+ hours (0 articles returned). Abandoned as a data source for this submission. (attempted 2026-10-18). No number is reported here because none was computed -- see `docs/ASSUMPTIONS.md` "Impact-score event study: not run".
 
 ## Limitations & Next Steps
 
-- **Impact Score validation is incomplete in this environment.** GDELT is unreachable from the dev sandbox
-  this was built in (confirmed, `docs/DATA_VERIFICATION.md` section 8); the event-study correlation needs
-  the resulting larger sample (n>=200 for adequate statistical power) to be meaningful. Infrastructure is
-  built and mechanically verified; see `docs/EVALUATION.md` section 3 and `docs/USER_TODO.md`.
+- **Impact Score event-study validation was not run.** GDELT returned HTTP 429 on every query for 2+ hours
+  (0 articles) on 2026-10-18 and has been abandoned as a data source for this submission -- see
+  `docs/ASSUMPTIONS.md` "Impact-score event study: not run". No correlation number is reported because none
+  was computed; the event-study code itself is built and mechanically verified (see `docs/EVALUATION.md`
+  section 3), it simply has no real sample to run against.
 - **Event classification accuracy is pending human labelling** of `data/eval/event_gold.csv`. The rule
   classifier is frozen at `rule-v1` (git tag `classifier-v1`) specifically so this score, once produced,
   reflects an honest, un-tuned evaluation.
@@ -123,19 +122,20 @@ Highest-impact real trigger: *US stock futures slip ahead of #inflation report -
 - **The social-source replay is historical, not live** - timestamps are synthetic, and the content predates
   this project's 2026 setting, creating a real temporal mismatch against the portfolio's 2026-10-02 market
   snapshot. Documented plainly, never presented as a real-time read (`docs/ASSUMPTIONS.md`).
-- **Market data (Treasury curve, equity spot) is PROVISIONAL** in this submission - fetched via a tool that
-  passes content through a summarising model rather than a direct download, because this dev sandbox cannot
-  reach treasury.gov/Yahoo Finance directly. `scripts/verify_provisional_data.py` exists to cross-check it;
-  see `docs/USER_TODO.md`.
+- **Market data (Treasury curve, equity spot) is SOURCED, not provisional** - fetched directly (`curl`-
+  equivalent request, not a summarising-model relay) via `scripts/build_cache.py --market-only` on
+  2026-10-18. An earlier WebFetch-relayed snapshot in this submission had been off by 38-141bp at every
+  tenor (a transcription error, not date drift) and has been replaced; see `docs/ASSUMPTIONS.md` "Market
+  data: provisional snapshot replaced with a direct fetch".
 - **Sector/country contagion, not name-matching**, maps a real-company signal onto the fictional portfolio
   (no fictional position IS the named real company) - an explicit, documented assumption.
 - **The Fed scenario's peak/trough is applied as one instantaneous shock**, not its real ~2-year quarterly
   path.
 - **Credit loss is a 1-year EL (Basel-style), not IFRS 9 lifetime ECL** - a real stress scenario would
   typically trigger Stage 2/3 staging, so this project's stressed credit-loss figures are a lower bound.
-- **Next steps:** finish the three pending evaluations above once real GDELT/market data is available;
-  consider Module A (tactical rebalancing) if time permits; replace the provisional market-data snapshot
-  with a directly-fetched one.
+- **Next steps:** finish event-classification scoring once `data/eval/event_gold.csv` is hand-labelled;
+  consider Module A (tactical rebalancing) if time permits. The impact-score event study has no further
+  next step with GDELT abandoned -- it would need a different news source entirely.
 
 ## AI Assistance Disclosure
 

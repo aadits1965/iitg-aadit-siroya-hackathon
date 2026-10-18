@@ -165,3 +165,56 @@ def build_all_caches(
             logger.exception("market data fetch failed; cache left untouched")
 
     return all_stats
+
+
+def build_market_only_cache(option_underlyings: list[str]) -> dict:
+    """No news/social ingestion at all -- just the Treasury curve (direct fetch,
+    never provisional) plus FRED credit spreads if a key is set, plus equity
+    spot prices for ONLY the tickers Module B's portfolio actually needs an
+    option underlying for (see docs/ASSUMPTIONS.md 'Module B: equity prices
+    are optional except for options' -- loans/bonds/swaps/FX never touch
+    equity prices, so there is no reason to pull the wider ~80-ticker
+    event-study universe here). Used by `build_cache.py --market-only` when
+    GDELT is rate-limited/abandoned for this submission -- see
+    docs/DATA_VERIFICATION.md section 8 and docs/ASSUMPTIONS.md 'Impact-score
+    event study: not run'.
+
+    The Treasury curve fetch is NOT wrapped in try/except -- unlike
+    build_all_caches()'s best-effort news/social steps, a market-only run's
+    entire purpose is to get a real curve, so a failure here must be loud, not
+    swallowed. Equity prices are best-effort (Module B degrades gracefully --
+    see exclude_unpriceable_options() in scripts/run_stress_test.py)."""
+    from datetime import date, timedelta
+
+    from src.ingestion.market_data import fetch_equity_prices, fetch_fred_series, fetch_treasury_curve
+
+    result = {"treasury_curve": None, "equity_prices": None, "fred_series": None}
+
+    curve_path = fetch_treasury_curve()
+    result["treasury_curve"] = str(curve_path)
+
+    try:
+        equity_path = fetch_equity_prices(
+            option_underlyings, start=date.today() - timedelta(days=30), end=date.today(),
+        )
+        result["equity_prices"] = str(equity_path)
+    except Exception:
+        logger.exception(
+            "equity price fetch failed for %s -- Module B will exclude any option position(s) whose "
+            "underlying has no spot price (see exclude_unpriceable_options() in scripts/run_stress_test.py) "
+            "rather than crash", option_underlyings,
+        )
+
+    import os
+
+    fred_key = os.environ.get("FRED_API_KEY")
+    if fred_key:
+        try:
+            fred_path = fetch_fred_series(["BAMLH0A0HYM2", "BAMLC0A0CM"], api_key=fred_key)
+            result["fred_series"] = str(fred_path)
+        except Exception:
+            logger.exception("FRED series fetch failed")
+    else:
+        logger.warning("FRED_API_KEY not set in .env -- skipping credit-spread series fetch (optional)")
+
+    return result

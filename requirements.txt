@@ -15,7 +15,8 @@ vaderSentiment==3.3.2
 # Data / finance
 pandas==2.2.3
 numpy==2.1.3
-yfinance==0.2.50
+yfinance==1.7.0  # bumped from 0.2.50 -- 0.2.50 failed with YFTzMissingError/"Expecting value" on a real
+                 # machine (2026-10-18); 1.7.0 confirmed working end-to-end (see docs/ASSUMPTIONS.md)
 fredapi==0.5.2
 
 # API / dashboard

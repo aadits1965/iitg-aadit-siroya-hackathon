@@ -119,5 +119,10 @@
       "latency_ms_per_doc": 138.49,
       "throughput_docs_per_s": 7.22
     }
+  },
+  "impact_score_event_study": {
+    "status": "not_run",
+    "reason": "GDELT rate-limited: HTTP 429 returned on every query for 2+ hours (0 articles returned). Abandoned as a data source for this submission.",
+    "attempted_on": "2026-10-18"
   }
 }

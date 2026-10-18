@@ -1,19 +1,65 @@
-# PROVISIONAL -- DO NOT USE IN THE DECK/README/FINAL NUMBERS UNTIL VERIFIED.
-# provisional: true
-# source: Yahoo Finance chart API (query1.finance.yahoo.com), fetched live via Claude's WebFetch tool, which
-# passes page content through a SUMMARISING MODEL rather than returning raw bytes -- so although this is
-# real, live-fetched data (not fabricated), these specific numbers were transcribed by that model and have
-# not been independently verified against the raw response bytes.
-# fetched_by: Claude (not scripts/build_cache.py) on 2026-10-04 because this dev sandbox's direct yfinance
-# calls fail (JSON decode errors / 429s) while WebFetch reached Yahoo successfully -- see
-# docs/DATA_VERIFICATION.md section 9. This is a SINGLE-DATE snapshot (2026-10-02 close/last price), enough
-# for Module B's option-underlying spot prices. It is NOT a time series and cannot support the Phase 3
-# event study, which needs a full historical window -- that requires scripts/build_cache.py run from a
-# normal network (see docs/USER_TODO.md).
-# REQUIRED before use in any deck/README/final number: run `python scripts/verify_provisional_data.py`.
+# source: Yahoo Finance via yfinance, fetched directly via scripts/build_cache.py on 2026-10-18
 date,ticker,close
-2026-10-02,SPY,769.64
-2026-10-02,AAPL,333.69
-2026-10-02,MSFT,517.53
-2026-10-02,NVDA,233.95
-2026-10-02,JPM,332.38
+2026-09-18,JPM,347.934204
+2026-09-21,JPM,350.292419
+2026-09-22,JPM,338.312195
+2026-09-23,JPM,335.854431
+2026-09-24,JPM,336.879333
+2026-09-25,JPM,341.356995
+2026-09-28,JPM,334.919098
+2026-09-29,JPM,333.317108
+2026-09-30,JPM,329.187683
+2026-10-01,JPM,331.526031
+2026-10-02,JPM,330.730011
+2026-10-05,JPM,330.730011
+2026-10-06,JPM,331.279999
+2026-10-07,JPM,329.579987
+2026-10-08,JPM,331.420013
+2026-10-09,JPM,332.989990
+2026-10-12,JPM,334.299988
+2026-10-13,JPM,331.429993
+2026-10-14,JPM,335.279999
+2026-10-15,JPM,335.529999
+2026-10-16,JPM,339.720001
+2026-09-18,NVDA,222.270004
+2026-09-21,NVDA,227.380005
+2026-09-22,NVDA,228.869995
+2026-09-23,NVDA,225.509995
+2026-09-24,NVDA,224.580002
+2026-09-25,NVDA,225.070007
+2026-09-28,NVDA,228.860001
+2026-09-29,NVDA,227.210007
+2026-09-30,NVDA,228.380005
+2026-10-01,NVDA,230.860001
+2026-10-02,NVDA,233.949997
+2026-10-05,NVDA,238.899994
+2026-10-06,NVDA,239.240005
+2026-10-07,NVDA,237.470001
+2026-10-08,NVDA,230.479996
+2026-10-09,NVDA,229.279999
+2026-10-12,NVDA,226.320007
+2026-10-13,NVDA,228.520004
+2026-10-14,NVDA,221.300003
+2026-10-15,NVDA,217.229996
+2026-10-16,NVDA,214.130005
+2026-09-18,SPY,761.690002
+2026-09-21,SPY,773.500000
+2026-09-22,SPY,773.380005
+2026-09-23,SPY,767.809998
+2026-09-24,SPY,767.179993
+2026-09-25,SPY,771.349976
+2026-09-28,SPY,765.609985
+2026-09-29,SPY,764.200012
+2026-09-30,SPY,762.630005
+2026-10-01,SPY,763.989990
+2026-10-02,SPY,769.640015
+2026-10-05,SPY,774.830017
+2026-10-06,SPY,779.090027
+2026-10-07,SPY,777.219971
+2026-10-08,SPY,773.929993
+2026-10-09,SPY,778.570007
+2026-10-12,SPY,778.099976
+2026-10-13,SPY,778.010010
+2026-10-14,SPY,769.599976
+2026-10-15,SPY,771.789978
+2026-10-16,SPY,763.250000

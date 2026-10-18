@@ -17,6 +17,16 @@ Flags:
                         impact-score event study will stay underpowered)
   --skip-market-data    skip Treasury/yfinance/FRED (faster, but Module B will
                         have no curve to price against)
+  --market-only         skip ALL news/social ingestion (GDELT, Mastodon,
+                        Twitter replay) and fetch ONLY the Treasury curve
+                        (direct, never provisional) + FRED spreads + equity
+                        spot prices for Module B's option underlyings. Added
+                        2026-10-18 after GDELT returned HTTP 429 on every
+                        query for 2+ hours (0 articles) -- see
+                        docs/ASSUMPTIONS.md "Impact-score event study: not
+                        run". Use this if you just need a real, non-
+                        provisional curve for Module B and GDELT is
+                        unreachable/rate-limited.
 """
 import argparse
 import logging
@@ -26,12 +36,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.ingestion.pipeline import build_all_caches  # noqa: E402
+from src.ingestion.pipeline import build_all_caches, build_market_only_cache  # noqa: E402
+from src.modules.stress_test.portfolio import load_portfolio  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 ROOT = Path(__file__).resolve().parents[1]
 TREASURY_CACHE = ROOT / "data" / "cache" / "market" / "treasury_par_yield_curve.csv"
+PORTFOLIO_PATH = ROOT / "data" / "synthetic" / "portfolio.csv"
 
 
 def _is_provisional(path: Path) -> bool:
@@ -51,7 +63,24 @@ if __name__ == "__main__":
     parser.add_argument("--skip-event-study", action="store_true")
     parser.add_argument("--skip-market-data", action="store_true")
     parser.add_argument("--skip-provisional-check", action="store_true")
+    parser.add_argument("--market-only", action="store_true",
+                         help="skip all news/social ingestion; fetch only the Treasury curve + FRED + "
+                              "the option underlyings' equity spot prices")
     args = parser.parse_args()
+
+    if args.market_only:
+        underlyings = sorted({
+            p.extra["underlying"] for p in load_portfolio(PORTFOLIO_PATH) if p.asset_class == "option"
+        })
+        print(f"--market-only: fetching the Treasury curve directly + equity spot for {underlyings} "
+              f"(Module B's option underlyings) + FRED (if FRED_API_KEY set). No GDELT/Mastodon/Twitter.\n")
+        result = build_market_only_cache(underlyings)
+        print("\n=== market-only fetch summary ===")
+        for key, path in result.items():
+            print(f"{key:16s} {'wrote ' + path if path else 'SKIPPED/FAILED (see log above)'}")
+        if result["treasury_curve"] is None:
+            sys.exit(1)
+        sys.exit(0)
 
     if not args.skip_market_data and not args.skip_provisional_check and _is_provisional(TREASURY_CACHE):
         print("Existing cached market data is PROVISIONAL (fetched via WebFetch, not a direct download).")
