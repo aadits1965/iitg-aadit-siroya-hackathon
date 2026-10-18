@@ -79,17 +79,10 @@ continues).
   Slides and export/print to PDF) and commit it. LibreOffice isn't installed in the dev sandbox this was
   built in, so this step couldn't be automated — **the repo structure requires `docs/presentation.pdf`
   explicitly, and `scripts/audit_compliance.py` will fail until it's there.**
-- **Capture these dashboard screenshots** (run `python run.py --mode demo` — now fast, no recompute by
-  default — and screenshot each tab), saving to the exact paths below. The deck generator automatically
-  uses a real screenshot in place of its generated chart on slide 5 for any of these that exist, re-run
-  `python scripts/generate_deck.py` (and re-export the PDF) after adding them:
-  - `docs/screens/live_signal_feed.png` — the Live Signal Feed tab, ideally with a high-impact signal selected
-    so the component-breakdown chart is visible
-  - `docs/screens/stress_test.png` — the Stress Test tab showing the real headline scenario (or, if a
-    scenario is manually chosen, make sure the "🔶 Manual scenario — not triggered by a real signal" label
-    is visible in the screenshot)
-  - `docs/screens/scenario_explorer.png` — the Scenario Explorer tab after clicking "Run scenario" once,
-    showing the "🔶 Manual scenario" label and a P&L result
+- **Dashboard screenshots are no longer used in the deck** (found unreadable at deck scale on a real
+  render — slide 5 now uses two large generated charts plus a callout panel instead). The three screenshots
+  already captured in `docs/screens/` are harmless to leave in place (unused by the generator now) or
+  delete, your call — nothing reads them anymore.
 - **Run `python scripts/audit_compliance.py`** — should print `AUDIT PASSED` once the PDF above is
   committed. Re-run the clean-clone + fresh-venv check too (Phase 11) — see the note below.
 

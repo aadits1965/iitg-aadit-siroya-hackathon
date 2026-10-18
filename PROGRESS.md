@@ -820,3 +820,36 @@ check every slide for overflow, per instruction.
 - Confirmed slide 5's three image slots resolve to the real screenshots via the generator's own printed output.
 
 This is a real limitation of this review, stated plainly rather than claimed away: a true rendered-PDF slide-by-slide check (catching e.g. font-substitution reflow, PowerPoint's own text-box behavior vs. python-pptx's) was not possible here. Aadit has PowerPoint/LibreOffice on his own machine and should still do a final visual pass there before submission.
+
+## Second deck review round (2026-10-19) -- real LibreOffice render on Aadit's machine
+
+`e656ad8` was rendered with LibreOffice on a real machine and surfaced issues the layout-math check in the
+previous round couldn't catch (screenshot legibility at scale, missing baseline context, a vague claim
+standing in for a real measured one). Fixed:
+
+1. **Slide 5 redesigned**: the 3 dashboard screenshots were unreadable at deck scale -- replaced with two
+   large (6in) generated charts (sentiment macro-F1 w/ CI, P&L by asset class) plus a callout panel with
+   the signed headline result (total stressed loss -$13,793,557 / -2.09% = MTM +$1,302,523 + credit loss
+   -$15,096,079). Bullet text cut to 3 short lines. Removed the now-dead screenshot-slot mechanism
+   (`SLOT_SCREEN_FALLBACKS`, `resolve_slide5_images()`) entirely rather than leave it unused.
+2. **Event classifier accuracy now always paired with its baseline**, everywhere it appears (README,
+   slide 5, slide 7): new `event_classifier_stat()` in `generate_readme.py` -- "88.5% vs 84.0%
+   always-'Other' baseline; Macroeconomic precision 100%, recall 34%" -- used in all three places instead
+   of three different phrasings of a bare accuracy number.
+3. **Slide 2's vague "collided with 'price target' in nearly every analyst note" replaced with the real
+   measured numbers**: 30% precision (18/61) before the entity-linking fix, 91.7% (44/48) after on the
+   same sample, 94.5% (52/55) confirmed on an independent fresh sample.
+4. **Removed a file path and test filename from slide 4** (`tests/test_demo_idempotency.py`) and a
+   `docs/USER_TODO.md` reference from slide 5 -- grepped the full generator for any remaining path-like
+   string in actual slide text (not docstrings/print statements) to confirm nothing else was missed.
+5. **Visual polish**: body font raised to >=18pt everywhere (was as low as 11.5pt); bullets shortened;
+   slides 2, 6, 7 restructured into two columns (slide 6 also gets a real-number callout panel) to use the
+   previously-empty lower half. Title slide is now two explicit lines, not one long auto-wrapped string, so
+   no word can end up stranded alone regardless of exact font metrics this sandbox can't verify without
+   LibreOffice.
+
+Regenerated README (same `event_classifier_stat()` used there too), ran pyflakes clean, full suite:
+**163 passed, 2 skipped**. Careful layout-math check repeated for every new/changed shape on every slide
+(image placement, text-box capacity estimates against character counts for the longest bullets) given
+LibreOffice still isn't available in this sandbox -- documented as a continuing limitation; Aadit's own
+render remains the authoritative check.

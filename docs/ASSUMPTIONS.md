@@ -382,6 +382,45 @@ all report this exact "not run" status via `scripts/generate_readme.py::format_i
 installed via `winget` for this round specifically to render the deck to PDF and visually check every slide
 for overflow -- see PROGRESS.md for the result.
 
+## Second deck review round (2026-10-19): LibreOffice render on a real machine
+
+Aadit rendered `e656ad8` with LibreOffice on his own machine (the install in this sandbox never completed,
+see above) and found further real issues a layout-math check alone couldn't catch:
+
+1. **Slide 5's three dashboard screenshots were unreadable at deck scale** -- real UI chrome (filter
+   controls, column headers) shrinks to illegible text at ~4in wide, a limitation of using literal
+   screenshots rather than purpose-built charts. Replaced with two large (6in-wide) generated charts
+   (sentiment macro-F1 with CI error bars; P&L by asset class for the headline scenario) plus one callout
+   panel stating the headline result at a glance: total stressed loss, split into MTM and credit loss, each
+   signed (`+`/`-`) so the two components' relationship to the total is unambiguous at a glance rather than
+   requiring the reader to infer signs from unsigned dollar figures. Bullet text cut to 3 short lines.
+2. **The event classifier's accuracy was never shown next to its baseline anywhere it appeared** (slides 5,
+   7, README) -- 88.5% reads as unconditionally good until you know the "always predict 'Other'" baseline
+   already gets 84.0% for free. Added `event_classifier_stat()` in `generate_readme.py` (a single canonical
+   stat string: accuracy vs. baseline, Macroeconomic precision/recall) and used it everywhere -- README,
+   slide 5, slide 7 -- so this comparison is never missing and never phrased three different ways.
+3. **Slide 2's "collided with 'price target' in nearly every analyst note" was a vague, unmeasured claim**
+   standing in for a real, already-measured finding. Replaced with the actual numbers from the
+   entity-linking audit: 30% precision (18/61) before the fix, 91.7% (44/48) after on the same sample,
+   confirmed 94.5% (52/55) on an independent fresh sample -- see "Event classifier: frozen at rule-v1"
+   section's sibling finding in `docs/DATA_VERIFICATION.md` sections 11 and 13.
+4. **A file path and a test filename were still on slide 4** (`tests/test_demo_idempotency.py`) despite the
+   no-backticks/no-paths rule applied to slides 5 and 7 the previous round -- the rule hadn't been checked
+   against every slide, only the two that had just been edited. Grepped the full generator for any
+   remaining path-like string in slide text (not docstrings/print statements) and removed the two found
+   (this one, and a `docs/USER_TODO.md` reference in slide 5's provisional-data warning).
+5. **Visual polish**: body font raised to >=18pt everywhere (was as low as 11.5pt on the old slide 5, 13pt
+   on slide 7); bullets shortened throughout; slides 2, 6, and 7 restructured into two columns (plus, on 6,
+   a real-number callout panel) instead of a single flat bullet list, using the lower half of the slide
+   that was previously empty. Title slide's text is now two EXPLICIT lines ("AI/NLP Risk Engine" /
+   "+ Strategic Portfolio Stress Test") rather than one long string left to PowerPoint's own word-wrap,
+   which risked leaving a single word stranded alone on its own line depending on exact font-rendering
+   metrics this environment can't reproduce without LibreOffice.
+6. Removed the now-dead screenshot-slot mechanism (`SLOT_SCREEN_FALLBACKS`, `resolve_slide5_images()`) from
+   `generate_deck.py` entirely, rather than leaving it as unused code now that slide 5 no longer uses
+   screenshots -- `docs/USER_TODO.md` updated to say the three captured screenshots are no longer read by
+   anything.
+
 ## GDELT headline-level constraint
 
 - The GDELT DOC 2.0 API returns `title` (headline) but no article body field. This project's NLP therefore

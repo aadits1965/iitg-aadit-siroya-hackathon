@@ -103,7 +103,7 @@ Highest-impact real trigger: *US stock futures slip ahead of #inflation report -
 **Why it matters:** a risk/ratings team reading thousands of headlines a day cannot manually translate each one into a portfolio impact. This pipeline shows that translation happening end to end -- from raw text to a dollar P&L number, with the mark-to-market and credit-loss channels kept separate so neither number silently double-counts the other.
 
 **Two evaluations from the original brief, status as of this generation:**
-- Event classification (`rule-v1`, frozen before scoring, gold labels blind-human-only): accuracy=88.5%, 95% CI [83.3%, 92.2%], macro-F1=0.363 (macro-F1 over the 4 classes with support>0 in this sample: ['Geopolitical', 'Macroeconomic', 'Credit Event', 'Other']) (n=200 hand-labelled examples). Majority-class baseline (always predicts 'Other'): accuracy=84.0% [78.3%, 88.4%], macro-F1=0.228.
+- Event classification (`rule-v1`, frozen before scoring, gold labels blind-human-only): 88.5% vs 84.0% always-'Other' baseline; Macroeconomic precision 100%, recall 34%, macro-F1=0.363 (macro-F1 over the 4 classes with support>0 in this sample: ['Geopolitical', 'Macroeconomic', 'Credit Event', 'Other']) (n=200 hand-labelled examples).
 - Impact Score event-study correlation: **not run** -- GDELT rate-limited: HTTP 429 returned on every query for 2+ hours (0 articles returned). Abandoned as a data source for this submission. (attempted 2026-10-18). No number is reported here because none was computed -- see `docs/ASSUMPTIONS.md` "Impact-score event study: not run".
 
 ## Limitations & Next Steps

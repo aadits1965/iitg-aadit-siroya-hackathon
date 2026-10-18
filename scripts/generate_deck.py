@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from generate_readme import require  # noqa: E402
+from generate_readme import event_classifier_stat, require  # noqa: E402
 
 from pptx import Presentation  # noqa: E402
 from pptx.util import Inches, Pt  # noqa: E402
@@ -23,54 +23,31 @@ METRICS_PATH = ROOT / "results" / "metrics.json"
 STRESS_PATH = ROOT / "results" / "stress_test_output.json"
 ARCH_PATH = ROOT / "docs" / "architecture.png"
 ASSETS_DIR = ROOT / "docs" / "deck_assets"
-SCREENS_DIR = ROOT / "docs" / "screens"
 OUT_PATH = ROOT / "docs" / "presentation.pptx"
 
-# Slide 5 prefers a REAL dashboard screenshot (Aadit captures these locally --
-# see docs/USER_TODO.md for the exact list and filenames) over the generated
-# chart, per-slot, falling back to the chart only where a screenshot isn't
-# present yet. No code change needed once screenshots are added -- just
-# re-run this script.
-SLOT_SCREEN_FALLBACKS = [
-    (SCREENS_DIR / "live_signal_feed.png", ASSETS_DIR / "sentiment_chart.png"),
-    (SCREENS_DIR / "stress_test.png", ASSETS_DIR / "stress_test_chart.png"),
-    (SCREENS_DIR / "scenario_explorer.png", ASSETS_DIR / "naive_vs_full_chart.png"),
-]
-
-
-def slide5_event_classification_line(metrics: dict) -> str:
+def slide_event_classification_line(metrics: dict) -> str:
     """Slide-friendly (no backticks, no Python lists, no file paths) -- unlike
     format_event_classification_status() in generate_readme.py, which is
     written for Markdown (README/dashboard) and isn't appropriate verbatim on
-    a slide."""
-    ece = metrics.get("event_classification_eval")
-    if not ece:
+    a slide. Always paired with its baseline and the Macroeconomic
+    precision/recall gap (event_classifier_stat()), never a bare accuracy
+    number presented as more conclusive than it is."""
+    stat = event_classifier_stat(metrics)
+    if stat is None:
         return "Event classifier: accuracy pending human labelling of the gold set."
-    acc = ece["accuracy"]
-    n = ece["n_gold_examples"]
-    return f"Event classifier (rule-v1): {acc:.0%} overall accuracy, n={n} blind-labelled gold examples."
+    return f"Event classifier: {stat}."
 
 
 def slide7_event_classification_bullets(metrics: dict) -> list[str]:
     ece = metrics.get("event_classification_eval")
     if not ece:
-        return ["Event classification: pending human labelling of the gold set."]
+        return ["Event classification: pending human labelling."]
     pc = ece["per_class"]
-    acc = ece["accuracy"]
-    n = ece["n_gold_examples"]
-    lines = [f"Event classifier (rule-v1): {acc:.0%} overall accuracy across {n} blind-labelled gold examples."]
-    macro = pc.get("Macroeconomic")
-    if macro and macro["support"] > 0:
-        correct = round(macro["recall"] * macro["support"])
-        lines.append(
-            f"Macroeconomic: {macro['precision']:.0%} precision but only {macro['recall']:.0%} recall "
-            f"({correct} of {int(macro['support'])}) — misses most true Macroeconomic headlines."
-        )
+    lines = [f"Event classifier: {event_classifier_stat(metrics)}."]
     for cls in ["Credit Event", "Geopolitical"]:
         support = int(pc.get(cls, {}).get("support", 0))
         if 0 < support < 5:
-            plural = "s" if support != 1 else ""
-            lines.append(f"{cls}: cannot be evaluated yet — only {support} example{plural} in this sample.")
+            lines.append(f"{cls}: too few examples to evaluate (n={support}).")
     return lines
 
 
@@ -81,7 +58,7 @@ def slide7_impact_study_line(metrics: dict) -> str:
     if not ies:
         return "Impact-score event study: pending a real sample."
     if ies.get("status") == "not_run":
-        return f"Impact-score event study: not run — {ies['reason']}"
+        return "Impact-score event study: not run — GDELT rate-limited (0 articles over 2+ hours), abandoned for this submission."
     n = ies.get("n_resolved")
     r = ies.get("spearman_r")
     if r is None:
@@ -94,15 +71,6 @@ def slide7_impact_study_line(metrics: dict) -> str:
     return f"Impact-score event study: n={n}, Spearman r={r:.3f} — {sig} relationship with realised returns."
 
 
-def resolve_slide5_images() -> list[Path]:
-    resolved = []
-    for screen_path, fallback_path in SLOT_SCREEN_FALLBACKS:
-        chosen = screen_path if screen_path.exists() else fallback_path
-        print(f"  slide 5 slot: {'REAL screenshot' if chosen == screen_path else 'generated chart (fallback)'} "
-              f"-- {chosen.relative_to(ROOT)}")
-        resolved.append(chosen)
-    return resolved
-
 INK = RGBColor(0x0B, 0x0B, 0x0B)
 MUTED = RGBColor(0x52, 0x51, 0x4E)
 BLUE = RGBColor(0x2A, 0x78, 0xD6)
@@ -113,25 +81,31 @@ SLIDE_W = Inches(13.333)
 SLIDE_H = Inches(7.5)
 
 
-def add_title_slide(prs, title, subtitle):
+def add_title_slide(prs, title_lines: list[str], subtitle):
+    """title_lines is a list of EXPLICIT lines, not one long string left to
+    auto-wrap -- a long title at this font size could wrap PowerPoint's own
+    way, which risks leaving a single stray word alone on its own line.
+    Explicit lines give full control over where it breaks instead."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank
     bg = slide.shapes.add_shape(1, 0, 0, SLIDE_W, SLIDE_H)
     bg.fill.solid()
     bg.fill.fore_color.rgb = BLUE
     bg.line.fill.background()
     bg.shadow.inherit = False
-    tb = slide.shapes.add_textbox(Inches(1), Inches(2.6), Inches(11.3), Inches(1.8))
+    tb = slide.shapes.add_textbox(Inches(1), Inches(2.3), Inches(11.3), Inches(2.2))
     tf = tb.text_frame
     tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.text = title
-    p.font.size = Pt(40)
-    p.font.bold = True
-    p.font.color.rgb = WHITE
+    for i, line in enumerate(title_lines):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = line
+        p.font.size = Pt(40)
+        p.font.bold = True
+        p.font.color.rgb = WHITE
     p2 = tf.add_paragraph()
     p2.text = subtitle
     p2.font.size = Pt(18)
     p2.font.color.rgb = WHITE
+    p2.space_before = Pt(14)
     return slide
 
 
@@ -176,6 +150,46 @@ def add_bullets(slide, bullets, left=0.5, top=1.3, width=12.3, height=5.8, font_
     return tb
 
 
+def fmt_signed_dollar(x: float) -> str:
+    return f"{'-' if x < 0 else '+'}${abs(x):,.0f}"
+
+
+def add_column_header(slide, text, left, top, width=5.9):
+    tb = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Inches(0.4))
+    p = tb.text_frame.paragraphs[0]
+    p.text = text
+    p.font.size = Pt(15)
+    p.font.bold = True
+    p.font.color.rgb = BLUE
+    return tb
+
+
+def add_callout_panel(slide, left, top, width, height, lines, big_font=22, small_font=14, color=None):
+    """A filled rounded panel with one large bold headline line and optional
+    smaller supporting lines below it -- for a single key number that should
+    read at a glance, not be buried in a bullet."""
+    panel = slide.shapes.add_shape(5, Inches(left), Inches(top), Inches(width), Inches(height))  # 5 = ROUNDED_RECTANGLE
+    panel.fill.solid()
+    panel.fill.fore_color.rgb = color or RGBColor(0xF2, 0xF6, 0xFC)
+    panel.line.color.rgb = BLUE
+    panel.line.width = Pt(1.5)
+    panel.shadow.inherit = False
+    tf = panel.text_frame
+    tf.word_wrap = True
+    tf.margin_left = Inches(0.25)
+    tf.margin_right = Inches(0.25)
+    tf.margin_top = Inches(0.12)
+    tf.margin_bottom = Inches(0.12)
+    for i, (text, is_big) in enumerate(lines):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = text
+        p.font.size = Pt(big_font if is_big else small_font)
+        p.font.bold = is_big
+        p.font.color.rgb = INK
+        p.space_after = Pt(4)
+    return panel
+
+
 def main():
     if not METRICS_PATH.exists() or not STRESS_PATH.exists():
         print("REFUSING TO BUILD DECK: results/metrics.json or results/stress_test_output.json missing.")
@@ -183,7 +197,7 @@ def main():
     if not ARCH_PATH.exists():
         print("REFUSING TO BUILD DECK: docs/architecture.png missing. Run scripts/generate_architecture_diagram.py first.")
         sys.exit(1)
-    for chart in ["sentiment_chart.png", "stress_test_chart.png", "naive_vs_full_chart.png"]:
+    for chart in ["sentiment_chart.png", "stress_test_chart.png"]:
         if not (ASSETS_DIR / chart).exists():
             print(f"REFUSING TO BUILD DECK: {chart} missing. Run scripts/generate_deck_charts.py first.")
             sys.exit(1)
@@ -193,11 +207,9 @@ def main():
 
     # Hard-required fields -- raises (refuses to build) if any is missing/None.
     finbert_f1 = require(metrics, "sentiment_eval", "finbert", "macro_f1")
-    finbert_f1_ci = require(metrics, "sentiment_eval", "finbert", "macro_f1_ci95")
     vader_f1 = require(metrics, "sentiment_eval", "vader", "macro_f1")
     majority_f1 = require(metrics, "sentiment_eval", "majority_baseline", "macro_f1")
     finbert_recall_neg = require(metrics, "sentiment_eval", "finbert", "per_class", "negative", "recall")
-    finbert_latency = require(metrics, "sentiment_eval", "finbert", "latency_ms_per_doc")
     n_signals = require(stress, "n_signals_evaluated")
     n_fired = require(stress, "n_fired")
     data_provisional = stress.get("data_provisional", False)
@@ -213,27 +225,39 @@ def main():
     prs.slide_width = SLIDE_W
     prs.slide_height = SLIDE_H
 
-    # Slide 1: Title
+    # Slide 1: Title -- explicit two-line split (not left to auto-wrap) so no
+    # single word ever ends up alone on its own line.
     add_title_slide(
-        prs, "AI/NLP Risk Engine + Strategic Portfolio Stress Test",
+        prs, ["AI/NLP Risk Engine", "+ Strategic Portfolio Stress Test"],
         "Aadit Siroya  |  IIT Guwahati  |  S&P Global & Crisil Campus Hackathon 2026",
     )
 
     # Slide 2: Problem & Approach -- leads with the business problem (a large,
-    # standalone statement) before any process/methodology bullet.
+    # standalone statement), then a two-column lower half: what was built vs.
+    # assumptions that turned out false on inspection (with the real measured
+    # numbers, not a vague "nearly every analyst note" claim).
     s2 = add_content_slide(prs, "Problem & Approach")
     add_lead_statement(
         s2, "Risk and ratings teams can't manually read every headline fast enough to know "
-            "what it means for a portfolio."
+            "what it means for a portfolio.", font_size=24
     )
     add_bullets(s2, [
-        ("Build: ingest news + social text → structured sentiment/event/impact signals → trigger a real portfolio stress test.", 0),
-        ("Three real assumptions that turned out false on inspection, adapted rather than worked around: X/Twitter has no "
-         "free read API in 2026 (switched to Mastodon); FinBERT is fine-tuned on Financial PhraseBank, so we evaluated it "
-         "on a disjoint dataset to avoid leakage; a naive \"Target Corp\" name match collided with \"price target\" in "
-         "nearly every analyst note (fixed with cashtag + context rules).", 0),
-        ("Discipline throughout: verify every external claim live, never report a number a script didn't actually produce.", 0),
-    ], top=2.5, font_size=18)
+        ("Built: news + social text → sentiment/event/impact signals → a real portfolio stress test.", 0),
+    ], top=2.7, height=0.7, font_size=19)
+
+    add_column_header(s2, "What we built it with", left=0.5, top=3.6)
+    add_bullets(s2, [
+        ("Verify every external claim live — never report a number a script didn't actually produce.", 0),
+        ("Two sources, one engine: live Mastodon posts and a historical tweet-replay fallback.", 0),
+    ], left=0.5, top=4.1, width=5.9, height=3.0, font_size=18)
+
+    add_column_header(s2, "Assumptions that turned out false", left=6.8, top=3.6)
+    add_bullets(s2, [
+        ("X/Twitter has no free read API in 2026 → switched to Mastodon.", 0),
+        ("FinBERT is fine-tuned on Financial PhraseBank → evaluated on a disjoint dataset to avoid leakage.", 0),
+        ("Entity linking: naive name match scored 30% precision (18/61) → cashtag + context rules reached "
+         "91.7% (44/48), confirmed 94.5% (52/55) on a fresh sample.", 0),
+    ], left=6.8, top=4.1, width=5.9, height=3.0, font_size=18)
 
     # Slide 3: System Design
     # Bug found 2026-10-19: embedding at a fixed width=12.5in with no height
@@ -259,95 +283,105 @@ def main():
     # Slide 4: Implementation Highlights
     s4 = add_content_slide(prs, "Implementation Highlights")
     add_bullets(s4, [
-        ("FinBERT (primary) vs VADER (naive baseline) vs majority-class, scored with bootstrap 95% CIs, not point estimates alone.", 0),
-        ("Event classifier frozen at rule-v1 (git tag classifier-v1) before scoring against hand-labelled gold data — no eval-set tuning.", 0),
-        ("Polling-based pub/sub (FastAPI + a flat JSONL file), documented honestly as polling, not a real message bus.", 0),
-        ("Module B: full cashflow reprice for bonds, swap DV01 via bump-and-reprice, closed-form Black-Scholes for options — "
-         "compared against the required naive (duration/delta-only) approximation, not just implemented once.", 0),
-        ("Mark-to-market P&L and credit loss (ΔEL on loans) kept as two separate numbers by construction — a loan is never "
-         "both fair-valued AND provisioned, which would double-count the same credit deterioration.", 0),
-        ("Demo mode verified byte-identical across two real end-to-end runs (tests/test_demo_idempotency.py).", 0),
-    ], font_size=16)
+        ("FinBERT vs VADER vs majority-class — scored with bootstrap 95% CIs, not point estimates alone.", 0),
+        ("Event classifier frozen before scoring against hand-labelled gold data — no eval-set tuning.", 0),
+        ("Polling-based pub/sub (FastAPI + a flat file) — documented honestly as polling, not a real message bus.", 0),
+        ("Full cashflow reprice for bonds, swap DV01 via bump-and-reprice, closed-form Black-Scholes for options — "
+         "each compared against the required naive approximation, not just implemented once.", 0),
+        ("Mark-to-market P&L and credit loss kept as two separate numbers — a position is never both "
+         "fair-valued and provisioned for the same deterioration.", 0),
+        ("Demo mode verified byte-identical across two real end-to-end runs, by a dedicated automated test.", 0),
+    ], font_size=18)
 
-    # Slide 5: Key Results
+    # Slide 5: Key Results -- 3 short bullets, two LARGE generated charts
+    # (not dashboard screenshots, which render unreadably small at deck
+    # scale), and one big callout panel for the single number that matters
+    # most: the headline stressed loss.
     s5 = add_content_slide(prs, "Key Results")
-    print("Resolving slide 5 images (real screenshot if available, else generated chart):")
-    slide5_images = resolve_slide5_images()
-    for img_path, left in zip(slide5_images, (0.3, 4.55, 8.8)):
-        s5.shapes.add_picture(str(img_path), Inches(left), Inches(1.15), width=Inches(4.1))
-    results_lines = [
-        f"FinBERT {finbert_f1:.3f} macro-F1 [{finbert_f1_ci[0]:.3f}, {finbert_f1_ci[1]:.3f}] vs VADER {vader_f1:.3f} "
-        f"vs majority-class {majority_f1:.3f} (n=2000, CIs don't overlap — real improvement). "
-        f"Bearish recall {finbert_recall_neg:.1%}. {finbert_latency:.0f}ms/doc on CPU.",
+    add_bullets(s5, [
+        (f"FinBERT {finbert_f1:.3f} macro-F1 vs VADER {vader_f1:.3f} vs majority-class {majority_f1:.3f} "
+         f"(n=2000) — bearish recall {finbert_recall_neg:.1%}.", 0),
+        (f"{n_signals} real signals evaluated, {n_fired} fired. Naive reprice error reaches "
+         f"{worst_bond_error_pct:.2f}% of position value — genuine convexity effect.", 0),
+        (f"{slide_event_classification_line(metrics)}", 0),
+    ], top=1.15, height=1.5, font_size=18)
 
-        f"{n_signals} real signals evaluated, {n_fired} fired a stress test. Naive duration-only error "
-        f"grows to {worst_bond_error_pct:.2f}% of position value at {worst_bond_error['shock']} vs. full "
-        f"reprice — genuine, growing convexity error, confirmed by tests.",
+    sentiment_chart_path = ASSETS_DIR / "sentiment_chart.png"
+    stress_chart_path = ASSETS_DIR / "stress_test_chart.png"
+    chart_top = 2.75
+    chart_w = 6.0
+    for img_path, left in ((sentiment_chart_path, 0.5), (stress_chart_path, 6.8)):
+        _img = _Image.open(img_path)
+        _h = chart_w / (_img.width / _img.height)
+        s5.shapes.add_picture(str(img_path), Inches(left), Inches(chart_top), width=Inches(chart_w), height=Inches(_h))
 
-        slide5_event_classification_line(metrics),
-    ]
-    if headline is not None:
-        results_lines.append(
-            f"Headline stress result: portfolio value ${headline['total_value_before']:,.0f} -> "
-            f"${headline['total_value_after']:,.0f}, total loss ${headline['total_stressed_loss']:,.0f} "
-            f"({headline['total_stressed_loss_pct']:.2f}%) — MTM P&L ${headline['mtm_pnl']:,.0f}, "
-            f"credit loss ${headline['credit_loss_on_loans']:,.0f}."
-        )
+    effective = headline or stress.get("illustrative_example_NOT_from_a_real_trigger")
+    callout_lines = []
+    if effective:
+        loss_label = "Headline result" if headline is not None else "Manual scenario (not a real trigger)"
+        callout_lines.append((
+            f"{loss_label}: total stressed loss {fmt_signed_dollar(effective['total_stressed_loss'])} "
+            f"({effective['total_stressed_loss_pct']:+.2f}%)", True
+        ))
+        callout_lines.append((
+            f"= MTM P&L {fmt_signed_dollar(effective['mtm_pnl'])}  +  credit loss "
+            f"{fmt_signed_dollar(-effective['credit_loss_on_loans'])}", False
+        ))
     if data_provisional:
-        results_lines.append("⚠ Market data (curve/equity spot) is PROVISIONAL this run — see docs/USER_TODO.md.")
-    if headline is None:
-        results_lines.append("⚠ MANUAL SCENARIO — NOT TRIGGERED BY A REAL SIGNAL: no real signal has fired a "
-                              "stress test as of this generation; the chart shows a manually-constructed "
-                              "scenario instead, labelled as such.")
-    tb = s5.shapes.add_textbox(Inches(0.3), Inches(5.3), Inches(12.6), Inches(1.9))
-    tf = tb.text_frame
-    tf.word_wrap = True
-    for i, line in enumerate(results_lines):
-        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        p.text = line
-        p.font.size = Pt(11.5)
-        p.font.color.rgb = INK
-        p.space_after = Pt(3)
+        callout_lines.append(("⚠ Market data is PROVISIONAL this run.", False))
+    if callout_lines:
+        add_callout_panel(s5, left=0.5, top=6.5, width=12.3, height=0.8, lines=callout_lines,
+                           big_font=20, small_font=14)
 
-    # Slide 6: Domain Impact
+    # Slide 6: Domain Impact -- one lead bullet, then a two-column lower half
+    # (prose left, a real-number callout right) instead of a flat bullet list.
     s6 = add_content_slide(prs, "Domain Impact")
     add_bullets(s6, [
-        ("Translates a news/social firehose into a dollar P&L number a credit/risk desk can act on, with full traceability: "
-         "signal → scenario → shock → P&L (visible in the dashboard's Audit Log tab).", 0),
-        ("Separating MTM P&L from credit loss mirrors how a real risk desk actually reports exposure — a trading-book "
-         "instrument and a banking-book loan are never collapsed into one undifferentiated number.", 0),
-        ("Shock magnitudes anchored to the Federal Reserve's own published severely-adverse scenario (fetched and cited "
-         "directly, not estimated) — domain-grounded, not arbitrary round numbers.", 0),
-        ("Fits S&P Global / Crisil's own domain: the signal taxonomy spans credit events, rating-adjacent language, "
-         "and portfolio-level stress — the same surface a ratings/risk-analytics business operates on. (Credit-event "
-         "detection itself isn't validated yet — too little gold-labelled data so far, see Limitations.)", 0),
-    ], font_size=17)
+        ("Translates headlines into a dollar P&L a risk desk can act on — signal → scenario → shock → P&L, "
+         "fully traceable.", 0),
+    ], top=1.15, height=0.8, font_size=19)
+
+    add_column_header(s6, "Mirrors real risk-desk practice", left=0.5, top=2.2)
+    add_bullets(s6, [
+        ("MTM P&L and credit loss stay separate — a trading-book instrument and a banking-book loan are "
+         "never collapsed into one number.", 0),
+        ("Shocks anchored to the Fed's own severely-adverse scenario — sourced, not arbitrary round numbers.", 0),
+        ("Taxonomy spans credit events, rating-adjacent language, portfolio stress — the surface a ratings/"
+         "risk-analytics business operates on. (Credit-event detection itself isn't validated yet.)", 0),
+    ], left=0.5, top=2.7, width=5.9, height=3.5, font_size=18)
+
+    if headline is not None:
+        add_callout_panel(s6, left=6.8, top=2.7, width=5.9, height=2.0, lines=[
+            (f"${abs(headline['total_stressed_loss']):,.0f} real stressed loss", True),
+            (f"{abs(headline['total_stressed_loss_pct']):.2f}% of portfolio value, from one real headline", False),
+        ], big_font=24, small_font=15)
 
     # Slide 7: Limitations & Next Steps -- the eval-status lines are pulled
     # live from metrics.json via slide-friendly formatters (no backticks, no
     # Python lists, no file paths -- unlike the README's Markdown-oriented
     # functions), so this slide automatically shows the real result with no
-    # code change needed as Aadit's local runs update metrics.json.
+    # code change needed as Aadit's local runs update metrics.json. Two
+    # columns (not one flat list) so the font can stay >=18pt and the lower
+    # half of the slide isn't left empty.
     s7 = add_content_slide(prs, "Limitations & Next Steps")
     market_data_bullet = (
-        "Market data (Treasury curve, equity spot) is PROVISIONAL in this build — fetched via a tool with a "
-        "summarising model in the loop, not a direct download; a verification script exists to cross-check it."
+        "Market data is PROVISIONAL in this build — fetched via a tool with a summarising model in the loop."
         if data_provisional else
-        "Market data (Treasury curve, equity spot) is SOURCED, not provisional — fetched directly."
+        "Market data is SOURCED, not provisional — fetched directly."
     )
-    s7_bullets = [(slide7_impact_study_line(metrics), 0)]
-    s7_bullets += [(line, 0) for line in slide7_event_classification_bullets(metrics)]
-    s7_bullets += [
+
+    add_column_header(s7, "Evaluation status", left=0.5, top=1.25)
+    left_bullets = [(slide7_impact_study_line(metrics), 0)]
+    left_bullets += [(line, 0) for line in slide7_event_classification_bullets(metrics)]
+    add_bullets(s7, left_bullets, left=0.5, top=1.75, width=5.9, height=4.5, font_size=18)
+
+    add_column_header(s7, "Known limitations & next steps", left=6.8, top=1.25)
+    add_bullets(s7, [
         (market_data_bullet, 0),
-        ("English-only; GDELT gives headline-level text only (no article body); the social replay source is "
-         "historical with synthetic timestamps, creating a real date mismatch against the live market snapshot.", 0),
-        ("Credit loss is 1-year EL (Basel-style), not IFRS 9 lifetime ECL — a real stress scenario would typically "
-         "trigger Stage 2/3 staging, so this is a lower bound, stated as such.", 0),
-        ("Next: grow the gold sample for Credit Event and Geopolitical, which have far too few examples to "
-         "evaluate yet, and investigate the Macroeconomic recall gap. The impact-score event study has no "
-         "further next step with GDELT abandoned — it would need a different news source entirely.", 0),
-    ]
-    add_bullets(s7, s7_bullets, font_size=13)
+        ("English-only; GDELT is headline-only; the social replay source has synthetic timestamps.", 0),
+        ("Credit loss is 1-year EL, not IFRS 9 lifetime — a lower bound, stated as such.", 0),
+        ("Next: grow the Credit Event / Geopolitical samples; investigate the Macroeconomic recall gap.", 0),
+    ], left=6.8, top=1.75, width=5.9, height=4.5, font_size=18)
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     prs.save(OUT_PATH)

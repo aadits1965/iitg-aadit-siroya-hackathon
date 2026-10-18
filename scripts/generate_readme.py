@@ -53,6 +53,23 @@ def fmt_ci_pct(ci: list) -> str:
     return f"[{ci[0]:.1%}, {ci[1]:.1%}]"
 
 
+def event_classifier_stat(metrics: dict) -> str | None:
+    """Canonical short stat used EVERYWHERE rule-v1's accuracy appears
+    (README, dashboard, both deck slides) -- a bare accuracy number looks
+    more conclusive than it is without its baseline and the one class where
+    it actually struggles, so this never gives accuracy alone. Returns None
+    if the eval hasn't been run yet."""
+    ece = metrics.get("event_classification_eval")
+    if not ece:
+        return None
+    acc = ece["accuracy"]
+    maj_acc = ece.get("majority_baseline", {}).get("accuracy")
+    baseline = f" vs {maj_acc:.1%} always-'Other' baseline" if maj_acc is not None else ""
+    macro = ece["per_class"].get("Macroeconomic", {})
+    return (f"{acc:.1%}{baseline}; Macroeconomic precision {macro.get('precision', 0):.0%}, "
+            f"recall {macro.get('recall', 0):.0%}")
+
+
 def format_event_classification_status(metrics: dict) -> str:
     ece = metrics.get("event_classification_eval")
     if not ece:
@@ -60,23 +77,15 @@ def format_event_classification_status(metrics: dict) -> str:
                 "hand-labelled (blind, via `scripts/label_events.py`, every row stamped "
                 "`label_source=human_blind`), then `scripts/score_event_classifier.py` (scores the frozen "
                 "`rule-v1`, git tag `classifier-v1`).")
-    acc = ece["accuracy"]
     f1 = ece["macro_avg"]["f1-score"]
     n = ece["n_gold_examples"]
     version = ece.get("classifier_version", "rule-v1")
     classes_included = ece.get("macro_avg_classes_included")
     macro_note = (f" (macro-F1 over the {len(classes_included)} classes with support>0 in this sample: "
                   f"{classes_included})" if classes_included else "")
-    ci = ece.get("accuracy_ci95")
-    ci_str = f", 95% CI [{ci[0]:.1%}, {ci[1]:.1%}]" if ci else ""
+    stat = event_classifier_stat(metrics)
     base = (f"Event classification (`{version}`, frozen before scoring, gold labels blind-human-only): "
-            f"accuracy={acc:.1%}{ci_str}, macro-F1={f1:.3f}{macro_note} (n={n} hand-labelled examples).")
-    maj = ece.get("majority_baseline")
-    if maj:
-        maj_ci = maj.get("accuracy_ci95")
-        maj_ci_str = f" [{maj_ci[0]:.1%}, {maj_ci[1]:.1%}]" if maj_ci else ""
-        base += (f" Majority-class baseline ({maj['description']}): accuracy={maj['accuracy']:.1%}"
-                 f"{maj_ci_str}, macro-F1={maj['macro_avg']['f1-score']:.3f}.")
+            f"{stat}, macro-F1={f1:.3f}{macro_note} (n={n} hand-labelled examples).")
     return base
 
 
