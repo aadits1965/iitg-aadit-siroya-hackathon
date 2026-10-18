@@ -325,6 +325,63 @@ real sample to run against. The README's Key Results section, Limitations sectio
 all report this exact "not run" status via `scripts/generate_readme.py::format_impact_event_study_status()`
 -- no invented correlation number appears anywhere.
 
+## Deck review fixes (2026-10-19): a false claim, a slide-level image cutoff, and stale generators
+
+**Found on Aadit's slide-by-slide review of `docs/presentation.pptx`:**
+
+1. **False claim, slide 2:** "FinBERT is fine-tuned on the exact dataset the brief's own eval plan implied
+   using (leakage)" -- the brief has no eval plan, so this was simply wrong, not an exaggeration of a real
+   finding. Corrected to the real, already-verified fact: FinBERT is fine-tuned on Financial PhraseBank, so
+   this project evaluated it on a disjoint dataset specifically to avoid leakage (see the sentiment-eval
+   leakage check elsewhere in this build). Slide 2 also restructured to lead with the business-problem
+   statement as a standalone headline, not buried as bullet one among process bullets.
+2. **Real bug, slide 3: the architecture diagram was cut off at the bottom of the slide itself**, not just
+   within the standalone PNG. `docs/architecture.png` is a wide image (aspect ratio ~1.61); embedding it at
+   a fixed `width=12.5in` with no height constraint let its height grow to ~7.75in, starting at `top=1.15in`
+   -- pushing its bottom edge to ~8.9in on a 7.5in-tall slide. The bottom ~18% of the diagram was invisible
+   in the actual deck the whole time; this was never visible by looking at the standalone PNG in isolation,
+   only by checking how it's placed on the slide. Fixed in `scripts/generate_deck.py` to fit BOTH the width
+   and height bounds (whichever constrains first), centered horizontally -- confirmed the embedded picture's
+   bottom edge is now at 7.25in, inside the 7.5in slide.
+3. **`docs/architecture.png` itself was almost entirely hardcoded text**, not read from
+   `results/metrics.json`/`results/stress_test_output.json` -- it still showed GDELT as a live source (long
+   abandoned), market data as PROVISIONAL (long since replaced with a direct fetch), the trigger rule
+   without the sentiment gate added days earlier, event classification as "pending" (already scored), the
+   impact study as "pending GDELT" (already recorded "not run"), and a hardcoded "126 tests" count stale by
+   several rounds of new tests. Rewritten to compute all of these live from the real files plus a live
+   `pytest --collect-only` count, exactly the discipline `generate_readme.py`/`generate_deck.py` already
+   follow for every other number in this project.
+4. **Overlapping chart labels, slide 5's P&L chart:** `scripts/generate_deck_charts.py` placed each bar's
+   dollar label a FIXED $300k/$800k above/below the bar's tip -- fine when all bars are similar magnitude,
+   but this chart has asset classes from -$4.2M (swap) to +$43.2M (option) sharing one axis, so the fixed
+   offset crowded the 0-line for the small bars. Offset is now a fraction of the chart's actual value range,
+   with extra axis padding so the largest-magnitude labels never clip the plot edges either.
+5. **Naive-vs-full reprice error reported as a bare dollar figure**, which doesn't say whether the error is
+   material. Slide 5 now reports it as a percentage of the position's own (true, full-reprice) value at that
+   shock -- e.g. "0.42% of position value" rather than a dollar amount with no reference point.
+6. **Slide 7 had gone stale**: a "finish event-classification scoring" next-step line that no longer
+   applied (scoring is done -- Aadit's blind-labelled gold set was scored in the previous round) and the
+   eval-status text reused `generate_readme.py`'s Markdown-oriented formatters verbatim, which include
+   backticks and a literal Python list (`['Geopolitical', 'Macroeconomic', ...]`) -- fine in a Markdown
+   README, wrong on a slide. Added `slide5_event_classification_line()`, `slide7_event_classification_bullets()`,
+   and `slide7_impact_study_line()` in `generate_deck.py` -- slide-appropriate plain language, computed from
+   the same `results/metrics.json`, stating plainly: rule-v1 has 100% precision but only 34% recall (10 of
+   29) on Macroeconomic, and Credit Event (n=1) / Geopolitical (n=2) cannot be evaluated yet in this
+   200-row blind-labelled sample. Next-step line corrected to reflect this: grow the gold sample for those
+   two classes and investigate the Macroeconomic recall gap, not "finish labelling."
+7. **Slide 6 implied credit-event detection without the caveat** that it isn't actually evaluable yet
+   (n=1 for Credit Event, see above). Reworded to state the domain fit (the signal taxonomy spans credit
+   events) without claiming the detection itself is validated.
+8. **The three screenshots Aadit captured** (`docs/screens/Screenshot 2026-10-18 23*.png`) didn't match the
+   exact filenames `scripts/generate_deck.py`'s `SLOT_SCREEN_FALLBACKS` looks for -- confirmed which tab
+   each one showed by opening them, then renamed to `live_signal_feed.png`/`stress_test.png`/
+   `scenario_explorer.png`. Re-ran the generator and confirmed via its own printed output that all three
+   slots now resolve to "REAL screenshot", not the generated-chart fallback.
+
+**LibreOffice** was not installed in this dev sandbox throughout this build (confirmed repeatedly); it was
+installed via `winget` for this round specifically to render the deck to PDF and visually check every slide
+for overflow -- see PROGRESS.md for the result.
+
 ## GDELT headline-level constraint
 
 - The GDELT DOC 2.0 API returns `title` (headline) but no article body field. This project's NLP therefore

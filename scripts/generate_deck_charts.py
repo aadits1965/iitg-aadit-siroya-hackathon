@@ -48,9 +48,10 @@ def sentiment_chart(metrics: dict) -> Path:
 def stress_test_chart(stress: dict) -> Path:
     headline = stress.get("headline_scenario") or stress["illustrative_example_NOT_from_a_real_trigger"]
     pnl = headline["pnl_by_asset_class"]
+    values = list(pnl.values())
     fig, ax = plt.subplots(figsize=(7, 4.2), dpi=150)
-    colors = [BLUE if v >= 0 else RED for v in pnl.values()]
-    ax.bar(list(pnl.keys()), list(pnl.values()), color=colors)
+    colors = [BLUE if v >= 0 else RED for v in values]
+    ax.bar(list(pnl.keys()), values, color=colors)
     ax.axhline(0, color=INK, lw=0.8)
     ax.set_ylabel("P&L ($)", fontsize=10)
     ax.spines[["top", "right"]].set_visible(False)
@@ -59,8 +60,22 @@ def stress_test_chart(stress: dict) -> Path:
               else "P&L by asset class — Manual scenario, not triggered by a real signal")
     ax.set_title(title, fontsize=11, weight="bold")
     ax.ticklabel_format(style="plain", axis="y")
-    for i, (k, v) in enumerate(pnl.items()):
-        ax.text(i, v + (3e5 if v >= 0 else -8e5), f"${v:,.0f}", ha="center", fontsize=8)
+
+    # Bug fixed 2026-10-20: labels used to sit a FIXED $300k/$800k above/below
+    # each bar's tip, which looked fine for bars of similar magnitude but
+    # crowded the 0-line for small bars sharing an axis with much larger ones
+    # (here: swap at -$4.2M on the same axis as option at +$43.2M). Offset is
+    # now a fraction of the actual y-range, and the axis itself gets extra
+    # headroom/footroom so the largest-magnitude labels never clip the edges.
+    y_range = max(values) - min(values)
+    offset = 0.035 * y_range
+    for i, v in enumerate(values):
+        label_y = v + offset if v >= 0 else v - offset
+        va = "bottom" if v >= 0 else "top"
+        ax.text(i, label_y, f"${v:,.0f}", ha="center", va=va, fontsize=8)
+    pad = 0.12 * y_range
+    ax.set_ylim(min(values) - pad, max(values) + pad)
+
     fig.tight_layout()
     out = ASSETS_DIR / "stress_test_chart.png"
     fig.savefig(out, facecolor="white")

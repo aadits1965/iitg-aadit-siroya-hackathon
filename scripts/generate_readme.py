@@ -205,10 +205,35 @@ def main():
 
     key_results_section = "\n".join(lines)
 
+    ece = metrics.get("event_classification_eval")
+    if not ece:
+        event_class_limitation_bullet = (
+            "- **Event classification accuracy is pending human labelling** of `data/eval/event_gold.csv`. "
+            "The rule classifier is frozen at `rule-v1` (git tag `classifier-v1`) specifically so this "
+            "score, once produced, reflects an honest, un-tuned evaluation."
+        )
+    else:
+        pc = ece["per_class"]
+        macro = pc.get("Macroeconomic", {})
+        thin_classes = [c for c in ("Credit Event", "Geopolitical") if 0 < pc.get(c, {}).get("support", 0) < 5]
+        thin_str = " and ".join(f"{c} (n={int(pc[c]['support'])})" for c in thin_classes) or "some classes"
+        event_class_limitation_bullet = (
+            f"- **Event classification (`rule-v1`, frozen before scoring) has real gaps, scored against "
+            f"{ece['n_gold_examples']} blind-labelled examples**: Macroeconomic recall is only "
+            f"{macro.get('recall', 0):.0%} ({round(macro.get('recall', 0) * macro.get('support', 0))} of "
+            f"{int(macro.get('support', 0))}) despite {macro.get('precision', 0):.0%} precision -- it misses "
+            f"most true Macroeconomic headlines. {thin_str} have too few gold examples in this sample to "
+            f"evaluate at all. A genuine fix is a new `rule-v2`, scored on a fresh sample -- `rule-v1` stays "
+            f"frozen (see `docs/ASSUMPTIONS.md`)."
+        )
+
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
     if "{{KEY_RESULTS_SECTION}}" not in template:
         raise RuntimeError("README_template.md is missing the {{KEY_RESULTS_SECTION}} placeholder.")
+    if "{{EVENT_CLASSIFICATION_LIMITATION_BULLET}}" not in template:
+        raise RuntimeError("README_template.md is missing the {{EVENT_CLASSIFICATION_LIMITATION_BULLET}} placeholder.")
     final = template.replace("{{KEY_RESULTS_SECTION}}", key_results_section)
+    final = final.replace("{{EVENT_CLASSIFICATION_LIMITATION_BULLET}}", event_class_limitation_bullet)
 
     OUT_PATH.write_text(final, encoding="utf-8")
     print(f"README.md written ({len(final)} chars). Every number above traced to {METRICS_PATH.name} / "

@@ -87,9 +87,7 @@ rather than this project's dev sandbox.
   `docs/ASSUMPTIONS.md` "Impact-score event study: not run". No correlation number is reported because none
   was computed; the event-study code itself is built and mechanically verified (see `docs/EVALUATION.md`
   section 3), it simply has no real sample to run against.
-- **Event classification accuracy is pending human labelling** of `data/eval/event_gold.csv`. The rule
-  classifier is frozen at `rule-v1` (git tag `classifier-v1`) specifically so this score, once produced,
-  reflects an honest, un-tuned evaluation.
+{{EVENT_CLASSIFICATION_LIMITATION_BULLET}}
 - **English-only.** Non-English documents are filtered at ingestion.
 - **Headline-level NLP for GDELT**, not full article text - the API has no body field, and this project
   does not scrape article bodies.

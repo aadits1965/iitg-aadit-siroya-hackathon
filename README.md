@@ -113,9 +113,7 @@ Highest-impact real trigger: *US stock futures slip ahead of #inflation report -
   `docs/ASSUMPTIONS.md` "Impact-score event study: not run". No correlation number is reported because none
   was computed; the event-study code itself is built and mechanically verified (see `docs/EVALUATION.md`
   section 3), it simply has no real sample to run against.
-- **Event classification accuracy is pending human labelling** of `data/eval/event_gold.csv`. The rule
-  classifier is frozen at `rule-v1` (git tag `classifier-v1`) specifically so this score, once produced,
-  reflects an honest, un-tuned evaluation.
+- **Event classification (`rule-v1`, frozen before scoring) has real gaps, scored against 200 blind-labelled examples**: Macroeconomic recall is only 34% (10 of 29) despite 100% precision -- it misses most true Macroeconomic headlines. Credit Event (n=1) and Geopolitical (n=2) have too few gold examples in this sample to evaluate at all. A genuine fix is a new `rule-v2`, scored on a fresh sample -- `rule-v1` stays frozen (see `docs/ASSUMPTIONS.md`).
 - **English-only.** Non-English documents are filtered at ingestion.
 - **Headline-level NLP for GDELT**, not full article text - the API has no body field, and this project
   does not scrape article bodies.

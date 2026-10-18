@@ -767,3 +767,56 @@ figure. Confirmed against the real (still entirely unlabelled, 0/200) committed 
 that the scorer correctly refuses with "200 / 200 rows ... are not yet labelled" -- the contamination
 happened on Aadit's local working copy, never committed. Full suite: **163 passed, 2 skipped** (16 new).
 `scripts/audit_compliance.py`: same single expected failure (`docs/presentation.pdf` missing).
+
+## Deck review fixes (2026-10-19)
+
+Pulled `2e18683` (blind human gold labels + rescored metrics + docs/screens/*.png from Aadit's local run).
+Fixed the generators per slide-by-slide review, not the pptx by hand:
+
+1. **Slide 2**: removed the false "FinBERT is fine-tuned on the exact dataset the brief's own eval plan
+   implied using" claim (the brief has no eval plan) -- corrected to the real fact: FinBERT is fine-tuned
+   on Financial PhraseBank, evaluated on a disjoint dataset to avoid leakage. Restructured to lead with the
+   business-problem statement as a standalone headline (`add_lead_statement()`), not buried in a bullet list.
+2. **Slide 3 / docs/architecture.png**: found and fixed a real bug -- the diagram was embedded at a fixed
+   width with no height check, pushing its bottom edge to ~8.9in on a 7.5in-tall slide (cut off ~18% of the
+   image, invisible in the actual deck even though the standalone PNG looked fine). Fixed to fit both
+   width/height bounds, confirmed bottom edge now at 7.25in. Also rewrote `generate_architecture_diagram.py`
+   to compute GDELT status, market-data sourcing + as_of, the trigger rule, event-classification/impact-study
+   results, and the test count all LIVE from `results/metrics.json`/`results/stress_test_output.json` and a
+   live `pytest --collect-only` count -- it had been almost entirely hardcoded text before (stale GDELT-as-
+   live-source, PROVISIONAL market data claim, missing sentiment gate, "pending" evals already resolved,
+   "126 tests" stale by several rounds). Visually inspected and fixed two overflow issues found along the
+   way (Trigger engine box text clipped left/right; a connector arrow+label cutting across the Evaluation
+   box's text) before confirming the final render is clean.
+3. **Slide 5**: renamed Aadit's 3 screenshots (`Screenshot 2026-10-18 23*.png`, confirmed which tab each
+   showed by opening them) to the exact filenames the generator looks for -- confirmed via the generator's
+   own printed output that all 3 slots now resolve to "REAL screenshot". Added the headline stress result
+   (value before->after, total loss + %, MTM vs credit loss) and the event-classification result to the Key
+   Results text. Naive-vs-full error now reported as % of position value (0.42%), not a bare dollar figure.
+   Restructured the dense single-paragraph results text into separate paragraphs for both readability and
+   more predictable vertical sizing.
+4. **Slide 7**: removed the stale "finish event-classification scoring" next-step line (scoring is done).
+   Added slide-appropriate (no backticks, no Python lists, no file paths) formatters
+   `slide5_event_classification_line()`, `slide7_event_classification_bullets()`, `slide7_impact_study_line()`
+   -- states plainly: rule-v1 has 100% precision but 34% recall (10 of 29) on Macroeconomic; Credit Event
+   (n=1) and Geopolitical (n=2) cannot be evaluated in this 200-row blind-labelled sample. Next-step line
+   corrected to "grow the gold sample for those two classes, investigate the Macroeconomic recall gap."
+5. **Slide 6**: reworded the domain-fit bullet to state the signal taxonomy spans credit events without
+   implying credit-event detection itself is validated (it isn't -- n=1, can't be evaluated).
+6. **P&L chart (`generate_deck_charts.py`)**: fixed overlapping/crowded labels -- the fixed $300k/$800k
+   label offset crowded the 0-line for small bars sharing an axis with much larger ones (swap -$4.2M next
+   to option +$43.2M). Offset is now proportional to the chart's value range, with extra axis padding.
+
+**LibreOffice was installed via winget specifically for this round** (`TheDocumentFoundation.LibreOffice`,
+not present in this dev sandbox throughout the rest of the build) to render the deck to PDF and visually
+check every slide for overflow, per instruction.
+
+**LibreOffice install did not complete in this sandbox**: attempted via `winget install TheDocumentFoundation.LibreOffice --silent`, which downloaded the ~372MB installer successfully but then stalled for ~25 minutes with the `winget.exe` process alive and no `msiexec`/`soffice.exe` ever appearing -- consistent with this sandbox's previously-documented environment flakiness (wildly inconsistent install times elsewhere in this build). Killed the stalled process rather than wait indefinitely.
+
+**Fell back to rigorous manual verification instead of a true PDF render:**
+- Dumped and read the actual text of all 7 slides via `python-pptx` after every generator change, to confirm each wording fix landed exactly as intended (not just that the code looks right).
+- Computed exact image-placement math (aspect ratio x target width/height x slide bounds) for every embedded image on every slide -- this is exactly what caught the real slide-3 cutoff bug (the architecture diagram's bottom ~18% was invisible on the actual slide, confirmed by the math: bottom edge at ~8.9in on a 7.5in-tall slide).
+- Directly visually inspected the standalone `docs/architecture.png` and `docs/deck_assets/stress_test_chart.png` renders (not the pptx itself, since nothing in this sandbox can rasterize a slide to an image) after each fix, iterating until clean.
+- Confirmed slide 5's three image slots resolve to the real screenshots via the generator's own printed output.
+
+This is a real limitation of this review, stated plainly rather than claimed away: a true rendered-PDF slide-by-slide check (catching e.g. font-substitution reflow, PowerPoint's own text-box behavior vs. python-pptx's) was not possible here. Aadit has PowerPoint/LibreOffice on his own machine and should still do a final visual pass there before submission.
