@@ -106,12 +106,12 @@ def main():
         writer = csv.writer(f)
         writer.writerow([
             "doc_id", "source", "published_at_utc", "text",
-            "suggested_label_do_not_use_as_gold", "gold_label",
+            "suggested_label_do_not_use_as_gold", "gold_label", "label_source",
         ])
         for d, guess in sampled:
             writer.writerow([
                 d.doc_id, d.source, d.published_at_utc.isoformat(),
-                d.text.replace("\n", " "), guess.event_class, "",
+                d.text.replace("\n", " "), guess.event_class, "", "",
             ])
 
     print(f"\nWrote {len(sampled)} rows to {OUT_PATH}")

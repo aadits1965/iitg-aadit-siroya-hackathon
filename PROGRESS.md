@@ -732,3 +732,38 @@ the collision.
 
 Full suite: **147 passed, 2 skipped** (2 new dashboard tests). `scripts/audit_compliance.py`: same
 single expected failure (`docs/presentation.pdf` missing), nothing new.
+
+## Gold-set labelling contamination fix (2026-10-19)
+
+**Bug reported from a real local labelling run:** `scripts/label_events.py`'s `s` shortcut (accept the
+rule baseline's own suggestion directly into `gold_label`) left no record of which rows took it --
+contaminating the human gold set with the classifier's own predictions on an unknown subset. Aadit is
+re-labelling all 200 rows from scratch rather than trying to reconstruct which were affected.
+
+**Fix, enforced at two points:**
+1. `scripts/label_events.py` -- the rule suggestion is never shown anymore, the `s` option is removed
+   entirely, every typed label is stamped a new `label_source = "human_blind"` CSV column, and `--fresh`
+   discards all existing `gold_label`/`label_source` values to restart labelling at row 1.
+2. `scripts/score_event_classifier.py` -- refuses to score (writes nothing to `results/metrics.json`)
+   unless every row has `label_source == "human_blind"`, including refusing if the column is missing
+   entirely.
+
+**Also fixed while rewriting the scorer:** macro-F1 was being dragged down by classes with zero support
+in the gold sample (this project's gold set has had zero "Product Launch" examples the whole build) --
+`sklearn`'s macro average over `labels=EVENT_CLASSES` forces a 0-support class's F1 to 0 via
+`zero_division=0`, which isn't a real classifier failure. `macro_avg_over_present_classes()` now restricts
+the average to classes with support>0, recording exactly which (`macro_avg_classes_included`); the full
+6-class per-class breakdown (support shown explicitly) is still reported separately, nothing hidden.
+Added a majority-class ("always Other") baseline (accuracy, macro-F1) and a closed-form Wilson 95% CI on
+accuracy for both `rule-v1` and the baseline (statsmodels isn't installed here). `generate_readme.py`'s
+`format_event_classification_status()` updated to surface all of this in the README/deck.
+
+**The frozen classifier (`rule-v1`, `RULE_KEYWORDS`, `CREDIT_MARKET_INDICATORS`) was not touched** -- only
+the labelling tool and the scorer's statistics changed, per instruction.
+
+16 new tests (`tests/test_label_events.py` x7, `tests/test_score_event_classifier.py` x9), including a
+Wilson-CI cross-check against the entity-linking audit's independently-reported 44/48 -> [80.4%, 96.7%]
+figure. Confirmed against the real (still entirely unlabelled, 0/200) committed `data/eval/event_gold.csv`
+that the scorer correctly refuses with "200 / 200 rows ... are not yet labelled" -- the contamination
+happened on Aadit's local working copy, never committed. Full suite: **163 passed, 2 skipped** (16 new).
+`scripts/audit_compliance.py`: same single expected failure (`docs/presentation.pdf` missing).

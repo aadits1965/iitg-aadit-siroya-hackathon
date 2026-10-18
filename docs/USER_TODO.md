@@ -12,10 +12,24 @@ deck, `results/metrics.json`, `docs/ASSUMPTIONS.md` "Impact-score event study: n
 - The **event-classification gold-set resampling step that used to be here is gone** — it depended on a
   real GDELT pull that isn't happening. The currently-committed `data/eval/event_gold.csv` (200 rows,
   Mastodon/Twitter-only, zero "Product Launch" examples — a real, stated limitation, not hidden) is what
-  you have to label. `python scripts/label_events.py` (interactive, resumable), then
-  `python scripts/score_event_classifier.py` (scores the frozen `rule-v1`, git tag `classifier-v1`, once).
-  **Do not edit `RULE_KEYWORDS`/`CREDIT_MARKET_INDICATORS` based on what this reports and re-run it** —
-  that would be tuning on the eval set; a genuine improvement is a new `rule-v2` scored on a fresh sample.
+  you have to label.
+
+  **Re-label from scratch (required):** an earlier labelling pass used `label_events.py`'s now-removed
+  `s` shortcut (accept the rule's suggestion directly) on an unknown subset of rows, with no record of
+  which ones — contaminating the gold set with the classifier's own predictions. Run:
+  ```bash
+  python scripts/label_events.py --fresh   # discards all existing gold_label/label_source values, starts at row 1
+  ```
+  The rule suggestion is never shown anymore and there is no shortcut — every label you type is stamped
+  `label_source=human_blind`. Then:
+  ```bash
+  python scripts/score_event_classifier.py   # refuses to run unless EVERY row has label_source=human_blind
+  ```
+  This scores the frozen `rule-v1` (git tag `classifier-v1`) once, and also reports a majority-class
+  ("always Other") baseline with its own Wilson 95% CI, so rule-v1's number has something real to be
+  judged against. **Do not edit `RULE_KEYWORDS`/`CREDIT_MARKET_INDICATORS` based on what this reports and
+  re-run it** — that would be tuning on the eval set; a genuine improvement is a new `rule-v2` scored on a
+  fresh sample.
 
 ## Local steps, in order
 

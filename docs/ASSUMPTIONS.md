@@ -20,6 +20,46 @@ that would be exactly the eval-set-tuning this project's own rules forbid (see t
 rule below). A `rule-v2` needs either a fresh gold sample or an explicitly train/test-split portion of the
 existing one, decided before looking at v2's results on it.
 
+## Gold-set contamination found and fixed (2026-10-19): the 's' shortcut
+
+**Found on a real local labelling run:** an earlier version of `scripts/label_events.py` showed the rule
+baseline's own suggestion on every row and offered `s` to accept it directly into `gold_label`, with no
+column recording which rows took that shortcut. Any row labelled via `s` is the classifier's own
+prediction, not an independent human judgement -- scoring `rule-v1` against a gold set partly made of
+`rule-v1`'s own guesses is circular for those rows, and there was no way to tell afterward which rows were
+affected. Aadit is re-labelling all 200 rows from scratch rather than trying to reconstruct which were
+contaminated.
+
+**Fix, enforced at two points so this can't recur silently:**
+1. `scripts/label_events.py` -- the rule suggestion is never shown, the `s` option is removed entirely
+   (not just discouraged), and every label actually typed is stamped `label_source = "human_blind"` in a
+   new CSV column. `--fresh` discards all existing `gold_label`/`label_source` values and restarts at row
+   1, for exactly this re-labelling.
+2. `scripts/score_event_classifier.py` -- **refuses to score** (exits non-zero, writes nothing to
+   `results/metrics.json`) unless every row has `label_source == "human_blind"`, including refusing
+   outright if the column doesn't exist at all (the exact shape of the file before this fix).
+
+**Also fixed while rewriting the scorer: macro-F1 was being dragged down by classes absent from the gold
+sample.** `sklearn.classification_report`'s macro average, given `labels=EVENT_CLASSES`, averages in
+every one of those six classes even when a class has **zero support** in `y_true` -- its F1 is forced to
+0 by `zero_division=0`, which isn't a real classifier failure, just a class this particular 200-row sample
+happens not to contain (this project's gold set has had zero "Product Launch" examples the entire build).
+`macro_avg_over_present_classes()` now restricts the macro average to classes with support>0 in the gold
+set, and records exactly which classes were included (`macro_avg_classes_included`) so this is never
+silently different from what a reader would expect "macro-F1" to mean. The full per-class breakdown
+(all six classes, support shown explicitly, including 0) is still reported separately -- nothing is
+hidden, only the *average* excludes absent classes.
+
+**Also added:** a majority-class ("always Other") baseline, scored the same way (accuracy, macro-F1 over
+present classes), plus a closed-form Wilson 95% CI on accuracy for both `rule-v1` and the baseline
+(statsmodels isn't installed here, same reasoning as the entity-linking audit in
+`docs/DATA_VERIFICATION.md` section 13) -- so `rule-v1`'s eventual score has a real floor to be judged
+against, not just a bare number. 16 new tests across `tests/test_label_events.py` (7) and
+`tests/test_score_event_classifier.py` (9).
+
+**The frozen classifier itself (`rule-v1`, `RULE_KEYWORDS`, `CREDIT_MARKET_INDICATORS`) was not touched**
+by any of this -- only the labelling tool and the scoring script's statistics changed.
+
 ## Methodology discipline
 
 - **No metric, threshold, label mapping, or weight is ever tuned on an evaluation/validation split.**
