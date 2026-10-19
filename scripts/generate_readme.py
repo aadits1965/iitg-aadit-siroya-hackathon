@@ -103,9 +103,10 @@ def format_event_classification_status(metrics: dict) -> str:
 def format_impact_event_study_status(metrics: dict) -> str:
     ies = metrics.get("impact_score_event_study")
     if not ies:
-        return ("Impact Score event-study correlation: **pending** -- needs a real GDELT sample "
-                "(this dev sandbox cannot reach GDELT; see `docs/DATA_VERIFICATION.md` section 8). "
-                "Run `scripts/run_impact_event_study.py` after `scripts/build_cache.py`.")
+        return ("Impact Score event-study correlation: **pending** -- needs a real GDELT sample. "
+                "GDELT has since been abandoned as a data source for this submission (rate-limited, see "
+                "`docs/DATA_VERIFICATION.md` section 8) -- this pending state should resolve to the "
+                "explicit \"not run\" status below, not stay pending indefinitely.")
     if ies.get("status") == "not_run":
         return (f"Impact Score event-study correlation: **not run** -- {ies['reason']} "
                 f"(attempted {ies.get('attempted_on', 'date unknown')}). No number is reported here because "

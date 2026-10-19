@@ -17,25 +17,27 @@ The AI/NLP Risk Engine ingests text from two distinct source types (news and soc
 document for sentiment (-1 to 1), classifies it into one of six event categories, and computes a
 transparent, component-by-component Impact Score (1-10). Signals are published both to a flat file and a
 FastAPI endpoint, so downstream consumers can poll either. **Module B (Strategic Portfolio Stress Testing)**
-subscribes to these signals: when a signal's Impact Score crosses a threshold, it fires a scenario-specific
-shock against a synthetic 50-position wholesale banking portfolio (loans, bonds, interest-rate swaps,
-equity options, FX forwards) and reports the resulting mark-to-market P&L and credit loss separately.
+subscribes to these signals: it fires when Impact Score > 7 AND sentiment < 0 (with a cooldown), triggering
+a scenario-specific shock against a synthetic 50-position wholesale banking portfolio (loans, bonds,
+interest-rate swaps, equity options, FX forwards) and reporting the resulting mark-to-market P&L and credit
+loss separately.
 
 The build approach throughout was to verify every external claim live rather than assume it, and to refuse
-to report a number that wasn't actually produced by a script. Several premises in the original brief turned
-out to be false on inspection - X/Twitter has no free read API in 2026, FinBERT is fine-tuned on the exact
-dataset the brief's own evaluation plan would have used, "price target" collides with a naive "Target Corp"
-name match - and the build adapted around each one rather than working around it silently. The full
-verification trail is in `docs/DATA_VERIFICATION.md`.
+to report a number that wasn't actually produced by a script. Several of my own initial assumptions turned
+out to be false on inspection - X/Twitter has no free read API in 2026, FinBERT is fine-tuned on Financial
+PhraseBank so it was evaluated on a disjoint dataset to avoid leakage, "price target" collides with a naive
+"Target Corp" name match - and the build adapted around each one rather than working around it silently.
+The full verification trail is in `docs/DATA_VERIFICATION.md`.
 
 ## 2. Architecture & Tech Stack
 
-![Architecture](architecture.png)
+![Architecture](docs/architecture.png)
 
-**Data flow:** News (GDELT) and social (Mastodon live + a licensed historical-tweet replay fallback) ->
-ingestion adapters with de-duplication -> NLP Risk Engine (entity linking, FinBERT sentiment, rule-based
-event classification, composite Impact Score) -> signal store (JSONL + SQLite) + FastAPI `/signals` endpoint
--> Module B trigger engine -> full-reprice portfolio revaluation -> Streamlit dashboard.
+**Data flow:** News - GDELT (attempted; rate-limited, 0 articles) - and social (Mastodon live + a licensed
+historical-tweet replay fallback, the real inputs this build actually runs on) -> ingestion adapters with
+de-duplication -> NLP Risk Engine (entity linking, FinBERT sentiment, rule-based event classification,
+composite Impact Score) -> signal store (JSONL + SQLite) + FastAPI `/signals` endpoint -> Module B trigger
+engine -> full-reprice portfolio revaluation -> Streamlit dashboard.
 
 **Frameworks & libraries:** FastAPI + uvicorn (signal API), Streamlit + Plotly (dashboard), Hugging Face
 Transformers (`ProsusAI/finbert`), VADER (naive sentiment baseline), pydantic (schemas), SQLite (signal
@@ -115,8 +117,10 @@ Highest-impact real trigger: *US stock futures slip ahead of #inflation report -
   section 3), it simply has no real sample to run against.
 - **Event classification (`rule-v1`, frozen before scoring) has real gaps, scored against 200 blind-labelled examples**: Macroeconomic recall is only 34% (10 of 29) despite 100% precision -- it misses most true Macroeconomic headlines. Credit Event (n=1) and Geopolitical (n=2) have too few gold examples in this sample to evaluate at all. A genuine fix is a new `rule-v2`, scored on a fresh sample -- `rule-v1` stays frozen (see `docs/ASSUMPTIONS.md`).
 - **English-only.** Non-English documents are filtered at ingestion.
-- **Headline-level NLP for GDELT**, not full article text - the API has no body field, and this project
-  does not scrape article bodies.
+- **The GDELT adapter is headline-level only, by design** - its API has no article-body field and this
+  project does not scrape one - though GDELT itself is currently abandoned as a data source for this
+  submission (rate-limited, see above), so this constraint is documentation of the adapter's design, not a
+  claim it's an active input.
 - **The social-source replay is historical, not live** - timestamps are synthetic, and the content predates
   this project's 2026 setting, creating a real temporal mismatch against the portfolio's 2026-10-02 market
   snapshot. Documented plainly, never presented as a real-time read (`docs/ASSUMPTIONS.md`).
