@@ -3,7 +3,7 @@
 **Candidate Name:** Aadit Siroya
 **College Email ID:** s.aadit@iitg.ac.in
 **College / Campus:** IIT Guwahati
-**Demo Video Link:** [YouTube Unlisted - to be added before submission]
+**Demo Video Link:** https://youtu.be/9a5jQkRwlzg
 **Slide Deck Link (if hosted externally):** [docs/presentation.pdf in this repo]
 
 ## 1. Project Overview / Problem Statement & Approach
